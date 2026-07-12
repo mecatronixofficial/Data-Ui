@@ -31,6 +31,9 @@ async function request(path: string, options: RequestInit = {}) {
 export const api = {
   login: (email: string, password: string) =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  googleLogin: () => {
+    window.location.assign(`${BASE}/auth/google`);
+  },
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request('/auth/me'),
 

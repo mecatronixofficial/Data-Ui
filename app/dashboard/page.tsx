@@ -27,7 +27,7 @@ export default function DashboardHome() {
           </div>
           <h1 className="font-display text-4xl leading-tight sm:text-5xl">Welcome back.</h1>
           <p className="mt-4 max-w-xl text-sm leading-6 text-emerald-50/75 sm:text-base">
-            Keep your ledger accurate and up to date. Add a new record in moments, then review your reports whenever you need them.
+            Keep your production records accurate and up to date. Add a new record in moments, then review your reports whenever you need them.
           </p>
           <Link
             href="/dashboard/entry/new"
@@ -77,7 +77,7 @@ export default function DashboardHome() {
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <h3 className="font-display text-xl text-emerald-950">View reports</h3>
-                  <p className="mt-1.5 text-sm leading-6 text-ink/55">Search, review, and export your ledger records.</p>
+                  <p className="mt-1.5 text-sm leading-6 text-ink/55">Search, review, and export your production records.</p>
                 </div>
                 <FiArrowRight className="shrink-0 text-emerald-500 transition group-hover:translate-x-1" aria-hidden="true" />
               </div>

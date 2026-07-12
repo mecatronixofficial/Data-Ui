@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiArrowRight, FiEye, FiEyeOff, FiLock, FiMail } from 'react-icons/fi';
+import { FcGoogle } from 'react-icons/fc';
 import { api } from '@/lib/api';
 
 export default function LoginPage() {
@@ -12,6 +13,20 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    const oauthError = new URLSearchParams(window.location.search).get('oauth_error');
+    if (!oauthError) return;
+
+    const messages: Record<string, string> = {
+      not_configured: 'Google sign-in is not configured on the server.',
+      invalid_state: 'Google sign-in expired or could not be verified. Please try again.',
+      access_denied: 'This Google account is not authorized. Ask an administrator for access.',
+    };
+    setError(messages[oauthError] || 'Google sign-in failed. Please try again.');
+    window.history.replaceState({}, '', window.location.pathname);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,12 +42,18 @@ export default function LoginPage() {
     }
   }
 
+  function handleGoogleSignIn() {
+    setError('');
+    setGoogleLoading(true);
+    api.googleLogin();
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-emerald-950 via-green-900 to-emerald-700 px-6 py-16">
       <div className="w-full max-w-sm">
         <div className="rounded-[2rem] border border-emerald-200/60 bg-white/95 p-8 shadow-[0_24px_80px_rgba(2,44,34,0.35)] backdrop-blur-xl">
           <div className="mb-8 text-center">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-emerald-600">Ledger</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Veone Production</p>
             <h1 className="font-display text-4xl text-emerald-950">Sign in</h1>
             <p className="mt-3 text-sm text-emerald-900/60">
               Enter your credentials to continue to your reports and entries.
@@ -98,6 +119,26 @@ export default function LoginPage() {
               {!loading && <FiArrowRight />}
             </button>
           </form>
+
+          <div className="mt-5">
+            <div className="mb-3 flex items-center gap-3">
+              <div className="h-px flex-1 bg-emerald-100" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-emerald-900/40">
+                Or continue with
+              </span>
+              <div className="h-px flex-1 bg-emerald-100" />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={googleLoading || loading}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-6 py-3 text-sm font-semibold text-emerald-900 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <FcGoogle className="text-lg" />
+              {googleLoading ? 'Connecting to Google…' : 'Continue with Google'}
+            </button>
+          </div>
 
           <p className="mt-6 text-center text-sm text-emerald-900/50">
             Access granted by your administrator.

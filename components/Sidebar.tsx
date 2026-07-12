@@ -36,7 +36,7 @@ export default function Sidebar({ role, name }: { role: string; name: string }) 
             <FiBookOpen size={20} aria-hidden="true" />
           </div>
           <div className="hidden lg:block">
-            <span className="font-display text-xl tracking-wide text-white">Ledger</span>
+            <span className="font-display text-lg leading-tight tracking-wide text-white">Veone Production</span>
             <p className="mt-0.5 text-[9px] uppercase tracking-[0.24em] text-emerald-200/55">Workspace</p>
           </div>
         </Link>

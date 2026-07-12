@@ -79,7 +79,7 @@ export default function UsersPage() {
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Access control</p>
           <h1 className="font-display text-4xl text-emerald-950">Users</h1>
-          <p className="mt-2 text-sm text-ink/55">Create accounts and manage access to your ledger workspace.</p>
+          <p className="mt-2 text-sm text-ink/55">Create accounts and manage access to the Veone Production workspace.</p>
         </div>
         <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white px-4 py-3 shadow-card">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">

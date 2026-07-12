@@ -9,6 +9,28 @@ import { api } from '@/lib/api';
 const emptyField1 = Array(10).fill(0);
 const emptyField2 = Array(6).fill(0);
 
+const field1BoxNames = [
+  'Daily cash sales received from customers during regular business operating hours',
+  'Online payment collections received through cards wallets and bank transfers',
+  'Outstanding customer invoices collected during the current reporting business accounting period',
+  'Product returns refunds and sales adjustments recorded for today transactions',
+  'Direct material purchases paid to approved suppliers during this period',
+  'Employee salaries wages bonuses and other payroll expenses paid today',
+  'Office rent electricity internet and routine utility expenses paid today',
+  'Transportation delivery fuel and vehicle maintenance expenses recorded during operations',
+  'Marketing advertising promotions and customer acquisition expenses paid this period',
+  'Other business income or expenses not included in standard categories',
+];
+
+const field2BoxNames = [
+  'Cash adjustments entered for corrections discovered during daily account reconciliation',
+  'Bank adjustments entered after reviewing deposits withdrawals and transfer records',
+  'Customer balance corrections recorded after verifying invoices payments and returns',
+  'Supplier balance corrections recorded after checking purchases payments and credits',
+  'Inventory value adjustments caused by damage loss returns or counting differences',
+  'Final miscellaneous adjustments required before successfully completing the current reporting period',
+];
+
 function sum(nums: number[]) {
   return nums.reduce((a, b) => a + b, 0);
 }
@@ -33,7 +55,7 @@ export default function NewEntryPage() {
   const [operator1, setOperator1] = useState<Operator>('+');
 
   const [field2, setField2] = useState<number[]>([...emptyField2]);
-  const [operator2, setOperator2] = useState<Operator>('+');
+  const operator2: Operator = '+';
 
   const [operator3, setOperator3] = useState<Operator>('+');
 
@@ -45,9 +67,9 @@ export default function NewEntryPage() {
   const total2 = useMemo(() => sum(field1.slice(7, 10)), [field1]);
   const field1Total = useMemo(() => applyOp(total1, total2, operator1), [total1, total2, operator1]);
 
-  const total3 = useMemo(() => sum(field2.slice(0, 4)), [field2]);
-  const total4 = useMemo(() => sum(field2.slice(4, 6)), [field2]);
-  const field2Total = useMemo(() => applyOp(total3, total4, operator2), [total3, total4, operator2]);
+  const positiveTotal = useMemo(() => sum(field2.filter((value) => value > 0)), [field2]);
+  const negativeTotal = useMemo(() => sum(field2.filter((value) => value < 0)), [field2]);
+  const field2Total = useMemo(() => positiveTotal + negativeTotal, [positiveTotal, negativeTotal]);
 
   const finalTotal = useMemo(
     () => applyOp(field1Total, field2Total, operator3),
@@ -66,7 +88,6 @@ export default function NewEntryPage() {
     setField1([...emptyField1]);
     setField2([...emptyField2]);
     setOperator1('+');
-    setOperator2('+');
     setOperator3('+');
     setError('');
     setSavedMessage('');
@@ -151,7 +172,7 @@ export default function NewEntryPage() {
 
         <div className="flex flex-wrap gap-3 mb-5">
           {field1.map((val, i) => (
-            <TallyBox key={i} index={i + 1} value={val} onChange={(v) => updateBox(field1, setField1, i, v)} />
+            <TallyBox idPrefix="field-1" key={i} index={i + 1} name={field1BoxNames[i]} value={val} onChange={(v) => updateBox(field1, setField1, i, v)} />
           ))}
         </div>
 
@@ -160,7 +181,7 @@ export default function NewEntryPage() {
           <OperatorToggle value={operator1} onChange={setOperator1} />
           <TotalPill label="Total 2 (8–10)" value={total2} />
           <span className="text-ink/30 font-display text-xl pb-2">=</span>
-          <TotalPill label="Field 1 Total" value={field1Total} emphasize />
+          <TotalPill label="Field 1 Total" value={field1Total} emphasize colorBySign />
         </div>
       </section>
 
@@ -170,22 +191,22 @@ export default function NewEntryPage() {
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 font-display text-lg text-white shadow-md shadow-emerald-900/15">02</span>
           <div>
             <h2 className="font-display text-xl text-emerald-950">Field 2</h2>
-            <p className="text-xs text-ink/45">6 boxes — boxes 1–4 and 5–6 combine into the field total</p>
+            <p className="text-xs text-ink/45">6 boxes — positive and negative values are grouped automatically, regardless of order</p>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-3 mb-5">
           {field2.map((val, i) => (
-            <TallyBox key={i} index={i + 1} value={val} onChange={(v) => updateBox(field2, setField2, i, v)} />
+            <TallyBox idPrefix="field-2" key={i} index={i + 1} name={field2BoxNames[i]} value={val} onChange={(v) => updateBox(field2, setField2, i, v)} />
           ))}
         </div>
 
         <div className="flex flex-wrap items-end justify-center gap-4 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-4">
-          <TotalPill label="Total 3 (1–4)" value={total3} />
-          <OperatorToggle value={operator2} onChange={setOperator2} />
-          <TotalPill label="Total 4 (5–6)" value={total4} />
+          <TotalPill label="Positive total" value={positiveTotal} colorBySign />
+          <span className="pb-2 font-display text-xl text-emerald-700">+</span>
+          <TotalPill label="Negative total" value={negativeTotal} colorBySign />
           <span className="text-ink/30 font-display text-xl pb-2">=</span>
-          <TotalPill label="Field 2 Total" value={field2Total} emphasize />
+          <TotalPill label="Field 2 Total" value={field2Total} emphasize colorBySign />
         </div>
       </section>
 
@@ -201,14 +222,20 @@ export default function NewEntryPage() {
         </div>
 
         <div className="relative flex flex-wrap items-end justify-center gap-4 py-2">
-          <TotalPill label="Field 1 Total" value={field1Total} dark />
+          <TotalPill label="Field 1 Total" value={field1Total} dark colorBySign />
           <OperatorToggle value={operator3} onChange={setOperator3} />
-          <TotalPill label="Field 2 Total" value={field2Total} dark />
+          <TotalPill label="Field 2 Total" value={field2Total} dark colorBySign />
         </div>
 
         <div className="relative mt-5 flex items-center justify-between border-t border-dashed border-white/20 pt-5">
           <span className="text-xs uppercase tracking-widest text-emerald-50/60">Final Total</span>
-          <span className="font-mono text-4xl font-semibold tabular text-white">{finalTotal}</span>
+          <span
+            className={`font-mono text-4xl font-semibold tabular ${
+              finalTotal < 0 ? 'text-red-300' : finalTotal > 0 ? 'text-emerald-200' : 'text-white'
+            }`}
+          >
+            {finalTotal}
+          </span>
         </div>
       </section>
 
@@ -241,25 +268,39 @@ function TotalPill({
   value,
   emphasize,
   dark,
+  colorBySign,
 }: {
   label: string;
   value: number;
   emphasize?: boolean;
   dark?: boolean;
+  colorBySign?: boolean;
 }) {
+  const signStyle = colorBySign
+    ? value < 0
+      ? dark
+        ? 'border border-red-300/40 bg-red-500/20 text-red-200'
+        : 'bg-red-600 text-white shadow-md shadow-red-900/10'
+      : value > 0
+        ? dark
+          ? 'border border-emerald-300/40 bg-emerald-400/20 text-emerald-100'
+          : 'bg-emerald-600 text-white shadow-md shadow-emerald-900/10'
+        : ''
+    : '';
+
+  const defaultStyle = emphasize
+    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/10'
+    : dark
+      ? 'border border-white/15 bg-white/10 text-white'
+      : 'border border-emerald-100 bg-white text-emerald-950';
+
   return (
     <div className="flex flex-col items-center">
       <span className={`mb-1 text-[10px] uppercase tracking-wider ${dark ? 'text-emerald-50/60' : 'text-emerald-900/45'}`}>
         {label}
       </span>
       <span
-        className={`rounded-lg px-3 py-1.5 font-mono text-lg tabular ${
-          emphasize
-            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/10'
-            : dark
-              ? 'border border-white/15 bg-white/10 text-white'
-              : 'border border-emerald-100 bg-white text-emerald-950'
-        }`}
+        className={`rounded-lg px-3 py-1.5 font-mono text-lg tabular ${signStyle || defaultStyle}`}
       >
         {value}
       </span>

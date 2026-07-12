@@ -21,8 +21,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Ledger — Data Entry',
-  description: 'Role-based data entry and reporting',
+  title: 'Veone Production — Data Entry',
+  description: 'Veone Production data entry and reporting',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

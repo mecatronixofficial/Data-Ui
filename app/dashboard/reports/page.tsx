@@ -66,7 +66,7 @@ export default function ReportsPage() {
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Overview</p>
           <h1 className="font-display text-4xl text-emerald-950">Reports</h1>
-          <p className="mt-2 text-sm text-ink/55">Review, filter, and export your ledger records.</p>
+          <p className="mt-2 text-sm text-ink/55">Review, filter, and export your production records.</p>
         </div>
         <a
           href={exportUrl({ name, startDate, endDate })}
@@ -135,7 +135,7 @@ export default function ReportsPage() {
               <FiFileText size={18} aria-hidden="true" />
             </div>
             <div>
-              <h2 className="font-display text-xl text-emerald-950">Ledger records</h2>
+              <h2 className="font-display text-xl text-emerald-950">Production records</h2>
               <p className="mt-0.5 text-xs text-ink/45">{loading ? 'Loading records' : `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} found`}</p>
             </div>
           </div>
