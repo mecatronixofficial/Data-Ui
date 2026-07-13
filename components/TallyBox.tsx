@@ -20,18 +20,20 @@ export default function TallyBox({
   index,
   name,
   value,
+  onNameChange,
   onChange,
 }: {
   idPrefix: string;
   index: number;
   name?: string;
   value: number;
+  onNameChange?: (name: string) => void;
   onChange: (v: number) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<DetailRow[]>([newRow()]);
   const total = useMemo(() => rows.reduce((sum, row) => sum + row.value, 0), [rows]);
-  const title = name ?? `Box ${index}`;
+  const title = name?.trim() || `Box ${index}`;
 
   useEffect(() => {
     if (value === 0 && total !== 0) {
@@ -93,7 +95,7 @@ export default function TallyBox({
             <div className="flex items-center justify-between border-b border-emerald-100 px-5 py-4">
               <div>
                 <h3 id={`${idPrefix}-box-${index}-title`} className="font-display text-xl text-emerald-950">{title}</h3>
-                <p className="text-xs text-ink/45">Enter names and values below.</p>
+                <p className="text-xs text-ink/45">Customize the box name, then enter names and values below.</p>
               </div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Close popup" className="rounded-lg p-2 text-ink/45 hover:bg-emerald-50 hover:text-emerald-800">
                 <FiX size={20} />
@@ -101,6 +103,24 @@ export default function TallyBox({
             </div>
 
             <div className="overflow-y-auto p-5">
+              {onNameChange && (
+                <div className="mb-5">
+                  <label
+                    htmlFor={`${idPrefix}-box-${index}-name`}
+                    className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-emerald-900/45"
+                  >
+                    Box name
+                  </label>
+                  <input
+                    id={`${idPrefix}-box-${index}-name`}
+                    type="text"
+                    value={name ?? ''}
+                    onChange={(event) => onNameChange(event.target.value)}
+                    placeholder={`Box ${index}`}
+                    className="w-full rounded-lg border border-emerald-100 bg-emerald-50/40 px-3 py-2 text-sm font-semibold text-emerald-950 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/10"
+                  />
+                </div>
+              )}
               <div className="mb-2 grid grid-cols-[1fr_8rem_2.5rem] gap-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-900/45">
                 <span>Name</span>
                 <span>Value</span>
