@@ -9,26 +9,26 @@ import { api } from '@/lib/api';
 const emptyField1 = Array(10).fill(0);
 const emptyField2 = Array(6).fill(0);
 
-const field1BoxNames = [
-  'Daily cash sales received from customers during regular business operating hours',
-  'Online payment collections received through cards wallets and bank transfers',
-  'Outstanding customer invoices collected during the current reporting business accounting period',
-  'Product returns refunds and sales adjustments recorded for today transactions',
-  'Direct material purchases paid to approved suppliers during this period',
-  'Employee salaries wages bonuses and other payroll expenses paid today',
-  'Office rent electricity internet and routine utility expenses paid today',
-  'Transportation delivery fuel and vehicle maintenance expenses recorded during operations',
-  'Marketing advertising promotions and customer acquisition expenses paid this period',
-  'Other business income or expenses not included in standard categories',
+const defaultField1BoxNames = [
+  'Box 1',
+  'Box 2',
+  'Box 3',
+  'Box 4',
+  'Box 5',
+  'Box 6',
+  'Box 7',
+  'Box 8',
+  'Box 9',
+  'Box 10',
 ];
 
-const field2BoxNames = [
-  'Cash adjustments entered for corrections discovered during daily account reconciliation',
-  'Bank adjustments entered after reviewing deposits withdrawals and transfer records',
-  'Customer balance corrections recorded after verifying invoices payments and returns',
-  'Supplier balance corrections recorded after checking purchases payments and credits',
-  'Inventory value adjustments caused by damage loss returns or counting differences',
-  'Final miscellaneous adjustments required before successfully completing the current reporting period',
+const defaultField2BoxNames = [
+  'Box 1',
+  'Box 2',
+  'Box 3',
+  'Box 4',
+  'Box 5',
+  'Box 6',
 ];
 
 function sum(nums: number[]) {
@@ -52,9 +52,11 @@ export default function NewEntryPage() {
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   const [field1, setField1] = useState<number[]>([...emptyField1]);
+  const [field1BoxNames, setField1BoxNames] = useState<string[]>([...defaultField1BoxNames]);
   const [operator1, setOperator1] = useState<Operator>('+');
 
   const [field2, setField2] = useState<number[]>([...emptyField2]);
+  const [field2BoxNames, setField2BoxNames] = useState<string[]>([...defaultField2BoxNames]);
   const operator2: Operator = '+';
 
   const [operator3, setOperator3] = useState<Operator>('+');
@@ -82,11 +84,19 @@ export default function NewEntryPage() {
     setList(next);
   }
 
+  function updateBoxName(list: string[], setList: (v: string[]) => void, idx: number, val: string) {
+    const next = [...list];
+    next[idx] = val;
+    setList(next);
+  }
+
   function resetForm() {
     setName('');
     setDate(new Date().toISOString().split('T')[0]);
     setField1([...emptyField1]);
     setField2([...emptyField2]);
+    setField1BoxNames([...defaultField1BoxNames]);
+    setField2BoxNames([...defaultField2BoxNames]);
     setOperator1('+');
     setOperator3('+');
     setError('');
@@ -107,8 +117,10 @@ export default function NewEntryPage() {
         name: normalizedName,
         date,
         field1Boxes: field1,
+        field1BoxNames: field1BoxNames.map((boxName, index) => boxName.trim() || `Box ${index + 1}`),
         operator1,
         field2Boxes: field2,
+        field2BoxNames: field2BoxNames.map((boxName, index) => boxName.trim() || `Box ${index + 1}`),
         operator2,
         operator3,
       });
@@ -172,7 +184,15 @@ export default function NewEntryPage() {
 
         <div className="flex flex-wrap gap-3 mb-5">
           {field1.map((val, i) => (
-            <TallyBox idPrefix="field-1" key={i} index={i + 1} name={field1BoxNames[i]} value={val} onChange={(v) => updateBox(field1, setField1, i, v)} />
+            <TallyBox
+              idPrefix="field-1"
+              key={i}
+              index={i + 1}
+              name={field1BoxNames[i]}
+              value={val}
+              onNameChange={(nextName) => updateBoxName(field1BoxNames, setField1BoxNames, i, nextName)}
+              onChange={(v) => updateBox(field1, setField1, i, v)}
+            />
           ))}
         </div>
 
@@ -197,7 +217,15 @@ export default function NewEntryPage() {
 
         <div className="flex flex-wrap gap-3 mb-5">
           {field2.map((val, i) => (
-            <TallyBox idPrefix="field-2" key={i} index={i + 1} name={field2BoxNames[i]} value={val} onChange={(v) => updateBox(field2, setField2, i, v)} />
+            <TallyBox
+              idPrefix="field-2"
+              key={i}
+              index={i + 1}
+              name={field2BoxNames[i]}
+              value={val}
+              onNameChange={(nextName) => updateBoxName(field2BoxNames, setField2BoxNames, i, nextName)}
+              onChange={(v) => updateBox(field2, setField2, i, v)}
+            />
           ))}
         </div>
 
