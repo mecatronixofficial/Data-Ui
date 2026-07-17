@@ -7,7 +7,7 @@ html {
 }
 
 body {
-  @apply text-ink;
+  @apply text-blue-900;
 }
 
 .tabular {

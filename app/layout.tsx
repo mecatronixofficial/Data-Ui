@@ -21,14 +21,14 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Veone Production — Data Entry',
-  description: 'Veone Production data entry and reporting',
+  title: 'Bone Production — Data Entry',
+  description: 'Bone Production data entry and reporting',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${fraunces.variable} ${inter.variable} ${plexMono.variable}`}>
-      <body className="font-body bg-paper text-ink min-h-screen">{children}</body>
+      <body className="font-body bg-paper text-blue-900 min-h-screen">{children}</body>
     </html>
   );
 }

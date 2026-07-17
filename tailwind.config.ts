@@ -1,32 +1,47 @@
 import type { Config } from 'tailwindcss';
 
+const brandBlue = {
+  50: '#EFF8FF',
+  100: '#DCEEFF',
+  200: '#B9DEFF',
+  300: '#86C7FF',
+  400: '#4AA9F4',
+  500: '#1689DC',
+  600: '#006BC4',
+  700: '#0057A2',
+  800: '#064A83',
+  900: '#0B3E6C',
+  950: '#072747',
+};
+
 const config: Config = {
   content: ['./app/**/*.{js,ts,jsx,tsx}', './components/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
+        blue: brandBlue,
         ink: {
-          DEFAULT: '#20704A',
-          light: '#60D394',
-          soft: '#B9ECD7',
+          DEFAULT: '#163A59',
+          light: '#4AA9F4',
+          soft: '#B9DEFF',
         },
         paper: {
-          DEFAULT: '#F9FEF9',
+          DEFAULT: '#F7FBFF',
           card: '#FFFFFF',
-          line: '#E5F7E8',
+          line: '#DCEEFF',
         },
         ledger: {
-          DEFAULT: '#86EFAC',
-          dark: '#22C55E',
-          light: '#D8FFE9',
+          DEFAULT: '#86C7FF',
+          dark: '#006BC4',
+          light: '#DCEEFF',
         },
         brass: {
-          DEFAULT: '#D9FAE8',
-          light: '#F4FFFB',
+          DEFAULT: '#DCEEFF',
+          light: '#F7FBFF',
         },
         rust: {
-          DEFAULT: '#15803D',
-          light: '#DCFCE7',
+          DEFAULT: '#006BC4',
+          light: '#DCEEFF',
         },
       },
       fontFamily: {
@@ -40,7 +55,7 @@ const config: Config = {
       },
       backgroundImage: {
         perforation:
-          'radial-gradient(circle, transparent 4px, #F5FBF7 4.5px) 0 0/16px 16px repeat-x',
+          'radial-gradient(circle, transparent 4px, #F7FBFF 4.5px) 0 0/16px 16px repeat-x',
       },
     },
   },

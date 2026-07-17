@@ -10,11 +10,11 @@ export default function OperatorToggle({
   onChange: (value: Operator) => void;
 }) {
   return (
-    <div className="relative inline-flex shrink-0 items-center rounded-xl border border-emerald-200 bg-white p-1 shadow-sm transition focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500/15">
+    <div className="relative inline-flex shrink-0 items-center rounded-xl border border-blue-200 bg-white p-1 shadow-sm transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-500/15">
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as Operator)}
-        className="h-9 cursor-pointer appearance-none rounded-lg bg-emerald-600 px-3 pr-8 text-center text-sm font-semibold text-white shadow-md shadow-emerald-900/15 outline-none transition hover:bg-emerald-700"
+        className="h-9 cursor-pointer appearance-none rounded-lg bg-blue-600 px-3 pr-8 text-center text-sm font-semibold text-white shadow-md shadow-blue-900/15 outline-none transition hover:bg-blue-700"
         aria-label="Calculation operator"
       >
         <option value="+">+</option>

@@ -39,7 +39,13 @@ export const api = {
 
   createEntry: (payload: any) =>
     request('/entries', { method: 'POST', body: JSON.stringify(payload) }),
+  updateEntry: (id: string, payload: any) =>
+    request(`/entries/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   myEntries: () => request('/entries/me'),
+  getEntry: (id: string) => request(`/entries/${id}`),
+  getBoxNames: () => request('/entries/box-names'),
+  updateBoxNames: (payload: { field1BoxNames: string[]; field2BoxNames: string[] }) =>
+    request('/entries/box-names', { method: 'PUT', body: JSON.stringify(payload) }),
   allEntries: (params: { name?: string; startDate?: string; endDate?: string }) => {
     const qs = new URLSearchParams(
       Object.entries(params).filter(([, v]) => !!v) as [string, string][],
