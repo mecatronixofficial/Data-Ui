@@ -51,13 +51,19 @@ export const api = {
   listUsers: () => request('/users'),
   createUser: (payload: any) =>
     request('/users', { method: 'POST', body: JSON.stringify(payload) }),
+  updateUser: (id: string, payload: { password: string }) =>
+    request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteUser: (id: string) => request(`/users/${id}`, { method: 'DELETE' }),
+
+  getReportSettings: () => request('/report-settings'),
+  updateReportSettings: (visibleColumns: string[]) =>
+    request('/report-settings', { method: 'PUT', body: JSON.stringify({ visibleColumns }) }),
 
   getFields: () => request('/fields'),
   getMyFields: () => request('/fields/mine'),
   createField: (payload: { name: string; order?: number; boxNames: string[]; roles?: string[]; icon?: string; boxIcons?: string[] }) =>
     request('/fields', { method: 'POST', body: JSON.stringify(payload) }),
-  updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; roles?: string[]; icon?: string; boxIcons?: string[] }) =>
+  updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; roles?: string[]; calcType?: string; groupSplit?: number; icon?: string; boxIcons?: string[] }) =>
     request(`/fields/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteField: (id: string) => request(`/fields/${id}`, { method: 'DELETE' }),
 };

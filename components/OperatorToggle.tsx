@@ -1,6 +1,6 @@
 'use client';
 
-export type Operator = '+' | '-' | '*' | '/';
+export type Operator = '+' | '-' ;
 
 export default function OperatorToggle({
   value,
@@ -19,8 +19,6 @@ export default function OperatorToggle({
       >
         <option value="+">+</option>
         <option value="-">−</option>
-        <option value="*">×</option>
-        <option value="/">÷</option>
       </select>
       <span className="pointer-events-none absolute right-3 text-[10px] text-white/80" aria-hidden="true">
         ▼

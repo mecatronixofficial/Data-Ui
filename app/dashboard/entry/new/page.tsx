@@ -196,40 +196,65 @@ export default function NewEntryPage() {
 
   if (loadingEntry) {
     return (
-      <div className="rounded-2xl border border-blue-100 bg-white p-8 text-center text-sm text-blue-900/50 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
-        Loading entry...
+      <div className="flex items-center justify-center py-20">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
+          <p className="text-xs font-semibold uppercase tracking-widest text-blue-900/40">Loading…</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">{isEditing ? 'Admin action' : 'New record'}</p>
-          <h1 className="font-display text-4xl text-blue-950">{isEditing ? 'Edit Entry' : 'Data Entry'}</h1>
+
+      {/* ── Page header ── */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-950 via-blue-800 to-blue-600 px-8 py-7 text-white shadow-[0_20px_50px_rgba(0,107,196,0.30)]">
+        {/* depth layers */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-400/15 blur-3xl" />
+          <div className="absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-blue-300/10 blur-3xl" />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
+          <div className="absolute -left-8 -top-8 h-[180%] w-2/5 rotate-12 bg-gradient-to-br from-white/8 via-white/4 to-transparent" />
         </div>
-        <div className="w-full md:w-52">
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Date</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 font-mono text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
-          />
+        {/* floating shape */}
+        <div className="pointer-events-none absolute right-8 top-4 h-16 w-16 rounded-xl border border-white/10 bg-white/5 rotate-12 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]" />
+
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-blue-200/60">
+              {isEditing ? 'Admin action' : 'New record'}
+            </p>
+            <h1 className="font-display text-3xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)] sm:text-4xl">
+              {isEditing ? 'Edit Entry' : 'Data Entry'}
+            </h1>
+          </div>
+
+          {/* Date input — sits inside the hero */}
+          <div className="sm:text-right">
+            <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-200/60">Date</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="rounded-xl border border-white/15 bg-white/10 px-3.5 py-2.5 font-mono text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] outline-none backdrop-blur-sm transition placeholder:text-white/40 focus:border-white/30 focus:ring-2 focus:ring-white/15"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Name & Date */}
-      <div className="grid grid-cols-1 gap-5 rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)] sm:grid-cols-2">
-        <div className="flex items-center gap-3 sm:col-span-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+      {/* ── Record details (name) ── */}
+      <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
+        {/* top-edge 3-D highlight */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/60 to-transparent" />
+
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-[0_4px_12px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)]">
             <FiEdit3 size={18} aria-hidden="true" />
           </div>
-          <div>
-            <h2 className="font-display text-xl text-blue-950">Record details</h2>
-          </div>
+          <h2 className="font-display text-xl text-blue-950">Record details</h2>
         </div>
+
         <div>
           <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Name</label>
           <input
@@ -241,14 +266,19 @@ export default function NewEntryPage() {
         </div>
       </div>
 
+      {/* ── Fields ── */}
       {fields.length === 0 ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
           No fields are configured for your role yet. Ask a superadmin to set up fields.
         </div>
       ) : (
         <>
-          <DynamicFieldsForm fields={fields} onBoxChange={updateBox} onDetailsChange={updateDetails} onOperatorChange={updateFieldOperator} />
-
+          <DynamicFieldsForm
+            fields={fields}
+            onBoxChange={updateBox}
+            onDetailsChange={updateDetails}
+            onOperatorChange={updateFieldOperator}
+          />
           <FinalTotalCard
             fieldNames={fields.map((f) => f.name)}
             fieldTotals={fieldTotals}
@@ -256,35 +286,68 @@ export default function NewEntryPage() {
         </>
       )}
 
-      {error && <p className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><FiAlertCircle />{error}</p>}
+      {error && (
+        <p className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <FiAlertCircle /> {error}
+        </p>
+      )}
+
+      {/* ── Actions ── */}
       <div className="flex flex-wrap gap-3">
+        {/* Save — 3-D raised button */}
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg shadow-blue-900/15 transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-60"
+          className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-6 py-3 font-semibold text-white shadow-[0_6px_20px_rgba(0,107,196,0.45),inset_0_1px_0_rgba(255,255,255,0.20)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(0,107,196,0.55)] active:translate-y-0 active:shadow-[0_3px_10px_rgba(0,107,196,0.35)] disabled:opacity-60"
         >
-          <FiCheck /> {saving ? 'Saving…' : isEditing ? 'Save changes' : 'Save'}
+          <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+          <span className="relative flex items-center gap-2">
+            <FiCheck size={16} />
+            {saving ? 'Saving…' : isEditing ? 'Save changes' : 'Save'}
+          </span>
         </button>
+
+        {/* Cancel — ghost */}
         <button
           onClick={handleCancel}
-          className="flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-6 py-3 font-medium text-blue-800 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+          className="flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-6 py-3 font-medium text-blue-800 shadow-[0_2px_8px_rgba(0,107,196,0.08)] transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
         >
-          <FiX /> Cancel
+          <FiX size={16} /> Cancel
         </button>
       </div>
+
+      {/* ── Feedback modal ── */}
       {feedback && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="entry-feedback-title">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
-            <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${feedback === 'saved' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-              {feedback === 'saved' ? <FiCheck size={25} /> : <FiX size={25} />}
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/50 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="entry-feedback-title"
+        >
+          <div className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-white p-6 text-center shadow-2xl">
+            {/* top-edge highlight */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/60 to-transparent" />
+
+            <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.10)] ${
+              feedback === 'saved'
+                ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-[0_4px_14px_rgba(0,107,196,0.35)]'
+                : 'bg-amber-100 text-amber-700'
+            }`}>
+              {feedback === 'saved' ? <FiCheck size={24} /> : <FiX size={24} />}
             </div>
+
             <h2 id="entry-feedback-title" className="font-display text-2xl text-blue-950">
               {feedback === 'saved' ? 'Saved successfully' : 'Canceled'}
             </h2>
             <p className="mt-2 text-sm text-blue-900/55">
               {feedback === 'saved' ? 'Your entry has been saved.' : 'Your changes were not saved.'}
             </p>
-            <button onClick={closeFeedback} className="mt-6 w-full rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+
+            <button
+              onClick={closeFeedback}
+              className="relative mt-6 w-full overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.20)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,107,196,0.45)]"
+            >
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
               {returnToReports ? 'Return to reports' : 'OK'}
             </button>
           </div>

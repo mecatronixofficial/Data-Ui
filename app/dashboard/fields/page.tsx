@@ -30,15 +30,19 @@ export default function FieldsPage() {
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ConfirmDelete | null>(null);
+  // true only for super admin (manageFields permission)
+  const [canEdit, setCanEdit] = useState(false);
 
   function load() {
     setLoading(true);
     Promise.all([api.me(), api.getFields()])
       .then(([user, fields]) => {
-        if (!user.permissions?.manageFields) {
+        const hasManage = Boolean(user.permissions?.manageFields);
+        if (!hasManage) {
           router.replace('/dashboard');
           return;
         }
+        setCanEdit(true);
         setRows(
           fields.map((f: any) => ({
             _id: f._id,
@@ -163,7 +167,7 @@ export default function FieldsPage() {
           name: row.name.trim() || `Field ${index + 1}`,
           order: index,
           boxNames: row.boxNames.map((boxName, i) => boxName.trim() || `Box ${i + 1}`),
-          roles: [],
+          roles: row.roles,
           calcType: row.calcType,
           groupSplit: row.groupSplit,
           icon: row.icon,
@@ -204,33 +208,42 @@ export default function FieldsPage() {
         </button>
       </div>
 
+      {!canEdit && (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 px-5 py-3 text-xs font-medium text-blue-700">
+          You can view fields but only a super admin can make changes.
+        </div>
+      )}
+
       {rows.length === 0 && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          No fields yet. Add one so users have somewhere to enter data.
+          No fields yet.{canEdit ? ' Add one so users have somewhere to enter data.' : ''}
         </div>
       )}
 
       {rows.map((row, index) => (
         <section key={row._id || `new-${index}`} className="rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
           <div className="mb-5 flex items-center gap-3">
-            <IconPicker value={row.icon} onChange={(icon) => updateRow(index, { icon })} />
+            <IconPicker value={row.icon} onChange={(icon) => canEdit && updateRow(index, { icon })} />
             <input
               aria-label="Field name"
               value={row.name}
+              readOnly={!canEdit}
               onChange={(event) => updateRow(index, { name: event.target.value })}
-              className="w-full rounded-lg border border-blue-100 bg-blue-50/50 px-3 py-2 text-sm font-semibold text-blue-950 outline-none focus:border-blue-400"
+              className={`w-full rounded-lg border border-blue-100 px-3 py-2 text-sm font-semibold text-blue-950 outline-none ${canEdit ? 'bg-blue-50/50 focus:border-blue-400' : 'bg-transparent cursor-default'}`}
             />
-            <div className="flex shrink-0 items-center gap-1">
-              <button type="button" onClick={() => moveField(index, -1)} disabled={index === 0} aria-label="Move up" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-800 disabled:opacity-30">
-                <FiChevronUp size={16} />
-              </button>
-              <button type="button" onClick={() => moveField(index, 1)} disabled={index === rows.length - 1} aria-label="Move down" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-800 disabled:opacity-30">
-                <FiChevronDown size={16} />
-              </button>
-              <button type="button" onClick={() => removeField(index)} aria-label="Remove field" className="rounded-lg p-2 text-blue-900/30 hover:bg-red-50 hover:text-red-600">
-                <FiTrash2 size={16} />
-              </button>
-            </div>
+            {canEdit && (
+              <div className="flex shrink-0 items-center gap-1">
+                <button type="button" onClick={() => moveField(index, -1)} disabled={index === 0} aria-label="Move up" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-800 disabled:opacity-30">
+                  <FiChevronUp size={16} />
+                </button>
+                <button type="button" onClick={() => moveField(index, 1)} disabled={index === rows.length - 1} aria-label="Move down" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-800 disabled:opacity-30">
+                  <FiChevronDown size={16} />
+                </button>
+                <button type="button" onClick={() => removeField(index)} aria-label="Remove field" className="rounded-lg p-2 text-blue-900/30 hover:bg-red-50 hover:text-red-600">
+                  <FiTrash2 size={16} />
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -239,46 +252,54 @@ export default function FieldsPage() {
                 <IconPicker
                   size="sm"
                   value={row.boxIcons[boxIndex]}
-                  onChange={(icon) => updateBoxIcon(index, boxIndex, icon)}
+                  onChange={(icon) => canEdit && updateBoxIcon(index, boxIndex, icon)}
                 />
                 <label className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-blue-900/55">
                   Box {boxIndex + 1}
                   <input
                     value={boxName}
+                    readOnly={!canEdit}
                     onChange={(event) => updateBoxName(index, boxIndex, event.target.value)}
-                    className="mt-1 w-full rounded-lg border border-blue-100 bg-blue-50/50 px-3 py-2 text-sm normal-case tracking-normal text-blue-950 outline-none focus:border-blue-400"
+                    className={`mt-1 w-full rounded-lg border border-blue-100 px-3 py-2 text-sm normal-case tracking-normal text-blue-950 outline-none ${canEdit ? 'bg-blue-50/50 focus:border-blue-400' : 'bg-transparent cursor-default'}`}
                   />
                 </label>
-                <button
-                  type="button"
-                  onClick={() => removeBox(index, boxIndex)}
-                  disabled={row.boxNames.length <= 1}
-                  aria-label="Remove box"
-                  className="mt-4 rounded-lg p-2 text-blue-900/30 hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
-                >
-                  <FiTrash2 size={14} />
-                </button>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => removeBox(index, boxIndex)}
+                    disabled={row.boxNames.length <= 1}
+                    aria-label="Remove box"
+                    className="mt-4 rounded-lg p-2 text-blue-900/30 hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
+                  >
+                    <FiTrash2 size={14} />
+                  </button>
+                )}
               </div>
             ))}
           </div>
-          <button type="button" onClick={() => addBox(index)} className="mb-5 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
-            <FiPlus /> Add box
-          </button>
+
+          {canEdit && (
+            <button type="button" onClick={() => addBox(index)} className="mb-5 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
+              <FiPlus /> Add box
+            </button>
+          )}
 
           <div className="mb-5">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/55">Role (how box values combine into this field's total)</p>
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/55">Calculation (how box values combine into this field's total)</p>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setCalcType(index, 'grouped')}
-                className={`rounded border px-3 py-1.5 text-xs font-medium transition ${row.calcType === 'grouped' ? 'border-blue-500 bg-blue-600 text-white' : 'border-blue-200 bg-white text-blue-800 hover:bg-blue-50'}`}
+                disabled={!canEdit}
+                onClick={() => canEdit && setCalcType(index, 'grouped')}
+                className={`rounded border px-3 py-1.5 text-xs font-medium transition ${row.calcType === 'grouped' ? 'border-blue-500 bg-blue-600 text-white' : 'border-blue-200 bg-white text-blue-800'} ${canEdit ? 'hover:bg-blue-50' : 'cursor-default opacity-80'}`}
               >
                 Grouped (split + operator)
               </button>
               <button
                 type="button"
-                onClick={() => setCalcType(index, 'signed')}
-                className={`rounded border px-3 py-1.5 text-xs font-medium transition ${row.calcType === 'signed' ? 'border-blue-500 bg-blue-600 text-white' : 'border-blue-200 bg-white text-blue-800 hover:bg-blue-50'}`}
+                disabled={!canEdit}
+                onClick={() => canEdit && setCalcType(index, 'signed')}
+                className={`rounded border px-3 py-1.5 text-xs font-medium transition ${row.calcType === 'signed' ? 'border-blue-500 bg-blue-600 text-white' : 'border-blue-200 bg-white text-blue-800'} ${canEdit ? 'hover:bg-blue-50' : 'cursor-default opacity-80'}`}
               >
                 Sum by sign (+ / −)
               </button>
@@ -290,8 +311,9 @@ export default function FieldsPage() {
                     min={1}
                     max={row.boxNames.length - 1}
                     value={row.groupSplit}
-                    onChange={(event) => updateRow(index, { groupSplit: Number(event.target.value) || 1 })}
-                    className="w-16 rounded-lg border border-blue-100 bg-blue-50/50 px-2 py-1.5 text-center text-sm text-blue-950 outline-none focus:border-blue-400"
+                    readOnly={!canEdit}
+                    onChange={(event) => canEdit && updateRow(index, { groupSplit: Number(event.target.value) || 1 })}
+                    className={`w-16 rounded-lg border border-blue-100 px-2 py-1.5 text-center text-sm text-blue-950 outline-none ${canEdit ? 'bg-blue-50/50 focus:border-blue-400' : 'bg-transparent cursor-default'}`}
                   />
                   <span className="text-blue-900/45">of {row.boxNames.length}</span>
                 </label>
@@ -303,11 +325,13 @@ export default function FieldsPage() {
 
       {error && <p className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><FiAlertCircle />{error}</p>}
 
-      <button onClick={save} disabled={saving} className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg shadow-blue-900/15 hover:bg-blue-700 disabled:opacity-60">
-        <FiCheck /> {saving ? 'Saving...' : 'Save fields'}
-      </button>
+      {canEdit && (
+        <button onClick={save} disabled={saving} className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg shadow-blue-900/15 hover:bg-blue-700 disabled:opacity-60">
+          <FiCheck /> {saving ? 'Saving...' : 'Save fields'}
+        </button>
+      )}
 
-      {confirmDelete && (
+      {canEdit && confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="fields-confirm-title">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100 text-red-600">
