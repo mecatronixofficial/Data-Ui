@@ -37,7 +37,7 @@ export default function UsersPage() {
   useEffect(() => {
     api.me()
       .then((user) => {
-        if (user.role === 'superadmin') load();
+        if (user.permissions?.manageUsers) load();
         else router.replace('/dashboard');
       })
       .catch(() => router.replace('/login'));
@@ -87,7 +87,6 @@ export default function UsersPage() {
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Access control</p>
           <h1 className="font-display text-4xl text-blue-950">Users</h1>
-          <p className="mt-2 text-sm text-blue-900/55">Create accounts and manage access to the Bone Production workspace.</p>
         </div>
         <div className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-white px-4 py-3 shadow-card">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
@@ -111,8 +110,7 @@ export default function UsersPage() {
             </div>
             <div>
               <h2 className="font-display text-xl text-blue-950">Create an account</h2>
-              <p className="text-xs text-blue-900/45">Enter the new user's details below.</p>
-            </div>
+           </div>
           </div>
         </div>
         <div>
@@ -177,7 +175,6 @@ export default function UsersPage() {
         <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
           <div>
             <h2 className="font-display text-xl text-blue-950">Team accounts</h2>
-            <p className="mt-0.5 text-xs text-blue-900/45">People with access to this workspace</p>
           </div>
         </div>
         <div className="overflow-x-auto">

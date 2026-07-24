@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { FiPlus, FiTrash2, FiX } from 'react-icons/fi';
+import { FieldIcon } from './IconPicker';
 
 type DetailRow = {
   id: number;
@@ -21,6 +22,7 @@ export default function TallyBox({
   idPrefix,
   index,
   name,
+  icon,
   value,
   details,
   onNameChange,
@@ -30,6 +32,7 @@ export default function TallyBox({
   idPrefix: string;
   index: number;
   name?: string;
+  icon?: string;
   value: number;
   details?: BoxDetail[];
   onNameChange?: (name: string) => void;
@@ -79,21 +82,21 @@ export default function TallyBox({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group relative w-full overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-white to-blue-50/70 p-4 text-left shadow-[0_8px_24px_rgba(0,107,196,0.08)] transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
+        aria-label={`${title}, click to edit`}
+        className="group relative w-full overflow-hidden rounded-2xl border border-blue-100 bg-white p-5 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
       >
-        <span className="absolute right-0 top-0 h-16 w-16 rounded-bl-full bg-blue-100/60 transition group-hover:bg-blue-200/70" />
-        <span className="relative flex items-center gap-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 font-display text-base text-white shadow-sm">
-            {index}
+        <span className="flex items-center justify-between gap-2">
+          <span className={value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-600'}>
+            <FieldIcon icon={icon} size={18} />
           </span>
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold leading-5 text-blue-950">{title}</span>
-            <span className="block text-[10px] uppercase tracking-wider text-blue-700/55">Click to edit</span>
-          </span>
+          <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-blue-900/40">{title}</span>
         </span>
-        <span className="relative mt-4 flex items-end justify-between border-t border-dashed border-blue-200 pt-3">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-800/45">Total</span>
-          <span className="font-mono text-2xl font-bold tabular-nums text-blue-950">{value}</span>
+        <span
+          className={`mt-3 block font-mono text-2xl font-bold tabular-nums ${
+            value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-950'
+          }`}
+        >
+          {value}
         </span>
       </button>
 

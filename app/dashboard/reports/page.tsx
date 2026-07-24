@@ -4,24 +4,38 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiAlertCircle, FiCheck, FiDownload, FiEdit2, FiFileText, FiFilter, FiSearch, FiTrash2, FiX } from 'react-icons/fi';
 import { api, exportUrl } from '@/lib/api';
+import { type BoxDetail } from '@/components/TallyBox';
+import { type Operator } from '@/components/OperatorToggle';
+import DynamicFieldsForm, { FinalTotalCard, type FieldValue, fieldTotal } from '@/components/DynamicFieldsForm';
+
+type EntryField = {
+  name: string;
+  boxNames: string[];
+  boxes: number[];
+  details: BoxDetail[][];
+  calcType: 'grouped' | 'signed';
+  groupSplit: number;
+  operator: string;
+  total: number;
+};
 
 type Entry = {
   _id: string;
   name: string;
   date: string;
-  field1Total: number;
-  field2Total: number;
+  fields: EntryField[];
+  fieldOperators: string[];
   finalTotal: number;
-  field1Boxes: number[];
-  field1BoxNames: string[];
-  operator1: string;
-  field2Boxes: number[];
-  field2BoxNames: string[];
-  operator2: string;
-  operator3: string;
   createdAt: string;
   updatedAt: string;
   createdBy?: { name: string };
+};
+
+type EditingEntry = {
+  _id: string;
+  name: string;
+  date: string;
+  fields: FieldValue[];
 };
 
 function wasEdited(entry: Entry) {
@@ -37,7 +51,7 @@ export default function ReportsPage() {
   const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [editing, setEditing] = useState<Entry | null>(null);
+  const [editing, setEditing] = useState<EditingEntry | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Entry | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -59,8 +73,8 @@ export default function ReportsPage() {
   useEffect(() => {
     api.me()
       .then((user) => {
-        if (user.role === 'admin' || user.role === 'superadmin') {
-          setCanManageReports(user.role === 'superadmin');
+        if (user.permissions?.viewAllReports) {
+          setCanManageReports(Boolean(user.permissions?.manageReports));
           load();
         } else {
           router.replace('/dashboard');
@@ -84,22 +98,52 @@ export default function ReportsPage() {
     }
   }
 
-  function updateEditing(field: keyof Entry, value: Entry[keyof Entry]) {
-    setEditing((current) => current ? { ...current, [field]: value } : current);
+  function startEdit(entry: Entry) {
+    setEditing({
+      _id: entry._id,
+      name: entry.name,
+      date: new Date(entry.date).toISOString().split('T')[0],
+      fields: entry.fields.map((f) => ({
+        name: f.name,
+        boxNames: [...f.boxNames],
+        boxes: [...f.boxes],
+        details: f.boxes.map((value, index) => (f.details?.[index]?.length ? f.details[index] : [{ name: '', value }])),
+        calcType: f.calcType,
+        groupSplit: f.groupSplit,
+        operator: (f.operator as Operator) || '+',
+      })),
+    });
   }
 
-  function updateBox(field: 'field1Boxes' | 'field2Boxes', index: number, value: number) {
-    if (!editing) return;
-    const boxes = [...editing[field]];
-    boxes[index] = value;
-    updateEditing(field, boxes);
+  function updateEditingBox(fieldIndex: number, boxIndex: number, value: number) {
+    setEditing((current) => {
+      if (!current) return current;
+      const fields = [...current.fields];
+      const boxes = [...fields[fieldIndex].boxes];
+      boxes[boxIndex] = value;
+      fields[fieldIndex] = { ...fields[fieldIndex], boxes };
+      return { ...current, fields };
+    });
   }
 
-  function updateBoxName(field: 'field1BoxNames' | 'field2BoxNames', index: number, value: string) {
-    if (!editing) return;
-    const names = [...editing[field]];
-    names[index] = value;
-    updateEditing(field, names);
+  function updateEditingDetails(fieldIndex: number, boxIndex: number, details: BoxDetail[]) {
+    setEditing((current) => {
+      if (!current) return current;
+      const fields = [...current.fields];
+      const fieldDetails = [...fields[fieldIndex].details];
+      fieldDetails[boxIndex] = details;
+      fields[fieldIndex] = { ...fields[fieldIndex], details: fieldDetails };
+      return { ...current, fields };
+    });
+  }
+
+  function updateEditingFieldOperator(fieldIndex: number, op: Operator) {
+    setEditing((current) => {
+      if (!current) return current;
+      const fields = [...current.fields];
+      fields[fieldIndex] = { ...fields[fieldIndex], operator: op };
+      return { ...current, fields };
+    });
   }
 
   async function handleUpdate() {
@@ -113,14 +157,9 @@ export default function ReportsPage() {
     try {
       const updated = await api.updateEntry(editing._id, {
         name: editing.name.trim(),
-        date: new Date(editing.date).toISOString().split('T')[0],
-        field1Boxes: editing.field1Boxes,
-        field1BoxNames: editing.field1BoxNames,
-        operator1: editing.operator1,
-        field2Boxes: editing.field2Boxes,
-        field2BoxNames: editing.field2BoxNames,
-        operator2: '+',
-        operator3: editing.operator3,
+        date: editing.date,
+        fields: editing.fields.map((field) => ({ name: field.name, boxes: field.boxes, details: field.details, operator: field.operator })),
+        fieldOperators: editing.fields.length > 1 ? Array(editing.fields.length - 1).fill('+') : [],
       });
       setEntries((current) => current.map((entry) => entry._id === editing._id ? { ...entry, ...updated } : entry));
       setEditing(null);
@@ -137,14 +176,27 @@ export default function ReportsPage() {
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Overview</p>
           <h1 className="font-display text-4xl text-blue-950">Reports</h1>
-          <p className="mt-2 text-sm text-blue-900/55">Review, filter, and export your production records.</p>
         </div>
-        <a
-          href={exportUrl({ name, startDate, endDate })}
-          className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/15 transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-        >
-          <FiDownload size={15} /> Download Excel
-        </a>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={exportUrl({ name, startDate, endDate })}
+            aria-label="Download Excel report"
+            title="Download Excel report"
+            className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-green-900/15 transition hover:-translate-y-0.5 hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
+          >
+            <FiDownload size={18} aria-hidden="true" />
+            Excel
+          </a>
+          <a
+            href={exportUrl({ name, startDate, endDate }, 'pdf')}
+            aria-label="Download PDF report"
+            title="Download PDF report"
+            className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-red-900/15 transition hover:-translate-y-0.5 hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+          >
+            <FiDownload size={18} aria-hidden="true" />
+            PDF
+          </a>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
@@ -154,7 +206,6 @@ export default function ReportsPage() {
           </div>
           <div>
             <h2 className="font-display text-xl text-blue-950">Filter records</h2>
-            <p className="text-xs text-blue-900/45">Narrow the report by name or date range.</p>
           </div>
         </div>
         <div className="flex flex-wrap items-end gap-4">
@@ -208,22 +259,23 @@ export default function ReportsPage() {
             </div>
             <button onClick={() => setEditing(null)} aria-label="Close editor" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-700"><FiX /></button>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="mb-5 grid gap-4 sm:grid-cols-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-blue-900/65">Name
-              <input value={editing.name} onChange={(event) => updateEditing('name', event.target.value)} className="mt-2 w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm normal-case tracking-normal outline-none focus:border-blue-400" />
+              <input value={editing.name} onChange={(event) => setEditing((current) => current && { ...current, name: event.target.value })} className="mt-2 w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm normal-case tracking-normal outline-none focus:border-blue-400" />
             </label>
             <label className="text-xs font-semibold uppercase tracking-wider text-blue-900/65">Date
-              <input type="date" value={new Date(editing.date).toISOString().split('T')[0]} onChange={(event) => updateEditing('date', event.target.value)} className="mt-2 w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm normal-case tracking-normal outline-none focus:border-blue-400" />
+              <input type="date" value={editing.date} onChange={(event) => setEditing((current) => current && { ...current, date: event.target.value })} className="mt-2 w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm normal-case tracking-normal outline-none focus:border-blue-400" />
             </label>
           </div>
-          <EditBoxes title="Field 1" values={editing.field1Boxes} names={editing.field1BoxNames} onChange={(index, value) => updateBox('field1Boxes', index, value)} onNameChange={(index, value) => updateBoxName('field1BoxNames', index, value)} />
-          <label className="mt-4 block max-w-xs text-xs font-semibold uppercase tracking-wider text-blue-900/65">Field 1 operator
-            <select value={editing.operator1} onChange={(event) => updateEditing('operator1', event.target.value)} className="mt-2 w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm outline-none"><option>+</option><option>-</option><option>*</option><option>/</option></select>
-          </label>
-          <EditBoxes title="Field 2" values={editing.field2Boxes} names={editing.field2BoxNames} onChange={(index, value) => updateBox('field2Boxes', index, value)} onNameChange={(index, value) => updateBoxName('field2BoxNames', index, value)} />
-          <label className="mt-4 block max-w-xs text-xs font-semibold uppercase tracking-wider text-blue-900/65">Final operator
-            <select value={editing.operator3} onChange={(event) => updateEditing('operator3', event.target.value)} className="mt-2 w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm outline-none"><option>+</option><option>-</option><option>*</option><option>/</option></select>
-          </label>
+
+          <div className="space-y-5">
+            <DynamicFieldsForm fields={editing.fields} onBoxChange={updateEditingBox} onDetailsChange={updateEditingDetails} onOperatorChange={updateEditingFieldOperator} />
+            <FinalTotalCard
+              fieldNames={editing.fields.map((f) => f.name)}
+              fieldTotals={editing.fields.map(fieldTotal)}
+            />
+          </div>
+
           <div className="mt-6 flex gap-3">
             <button onClick={handleUpdate} disabled={saving} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"><FiCheck />{saving ? 'Saving...' : 'Save changes'}</button>
             <button onClick={() => setEditing(null)} className="rounded-xl border border-blue-200 px-5 py-2.5 text-sm font-medium text-blue-800 hover:bg-blue-50">Cancel</button>
@@ -239,7 +291,6 @@ export default function ReportsPage() {
             </div>
             <div>
               <h2 className="font-display text-xl text-blue-950">Production records</h2>
-              <p className="mt-0.5 text-xs text-blue-900/45">{loading ? 'Loading records' : `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} found`}</p>
             </div>
           </div>
         </div>
@@ -249,8 +300,7 @@ export default function ReportsPage() {
             <tr className="border-b border-blue-100 bg-blue-50/60 text-left text-xs uppercase tracking-wider text-blue-900/55">
               <th className="px-5 py-3 font-medium">Name</th>
               <th className="px-5 py-3 font-medium">Date</th>
-              <th className="px-5 py-3 font-medium text-right">Field 1</th>
-              <th className="px-5 py-3 font-medium text-right">Field 2</th>
+              <th className="px-5 py-3 font-medium">Fields</th>
               <th className="px-5 py-3 font-medium text-right">Final Total</th>
               <th className="px-5 py-3 font-medium">Added by</th>
               {canManageReports && <th className="px-5 py-3 font-medium">Actions</th>}
@@ -259,14 +309,14 @@ export default function ReportsPage() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={canManageReports ? 7 : 6} className="px-5 py-8 text-center text-blue-900/40 font-mono text-xs">
+                <td colSpan={canManageReports ? 6 : 5} className="px-5 py-8 text-center text-blue-900/40 font-mono text-xs">
                   loading…
                 </td>
               </tr>
             )}
             {!loading && entries.length === 0 && (
               <tr>
-                <td colSpan={canManageReports ? 7 : 6} className="px-5 py-8 text-center text-blue-900/40">
+                <td colSpan={canManageReports ? 6 : 5} className="px-5 py-8 text-center text-blue-900/40">
                   No entries match these filters.
                 </td>
               </tr>
@@ -284,8 +334,15 @@ export default function ReportsPage() {
                       {wasEdited(e) && <span className="rounded bg-amber-200 px-1.5 py-0.5 text-[9px] uppercase tracking-wider">Updated</span>}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-right font-mono tabular">{e.field1Total}</td>
-                  <td className="px-5 py-3 text-right font-mono tabular">{e.field2Total}</td>
+                  <td className="px-5 py-3 text-blue-900/60">
+                    <div className="flex flex-wrap gap-1.5">
+                      {e.fields.map((field) => (
+                        <span key={field.name} className="rounded-lg bg-blue-50 px-2 py-1 font-mono text-xs tabular text-blue-800">
+                          {field.name}: {field.total}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
                   <td className="px-5 py-3 text-right">
                     <span className="inline-flex rounded-lg bg-blue-100 px-2.5 py-1 font-mono font-semibold tabular text-blue-800">{e.finalTotal}</span>
                   </td>
@@ -293,7 +350,7 @@ export default function ReportsPage() {
                   {canManageReports && <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button
-                        onClick={() => router.push(`/dashboard/entry/edit/${e._id}`)}
+                        onClick={() => startEdit(e)}
                         className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
                         aria-label="Edit entry"
                       >
@@ -355,46 +412,5 @@ export default function ReportsPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function EditBoxes({ title, values, names, onChange, onNameChange }: { title: string; values: number[]; names: string[]; onChange: (index: number, value: number) => void; onNameChange: (index: number, value: string) => void }) {
-  return (
-    <div className="mt-5">
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-blue-900/65">{title}</h3>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {values.map((value, index) => (
-          <div key={index} className="rounded-xl border border-blue-100 bg-blue-50/30 p-2">
-            <input value={names[index] || ''} onChange={(event) => onNameChange(index, event.target.value)} aria-label={`${title} box ${index + 1} name`} className="mb-1 w-full bg-transparent text-[10px] font-semibold uppercase tracking-wider text-blue-800 outline-none" />
-            <EditableNumber value={value} onChange={(nextValue) => onChange(index, nextValue)} label={`${names[index] || `Box ${index + 1}`} value`} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function EditableNumber({ value, onChange, label }: { value: number; onChange: (value: number) => void; label: string }) {
-  const [text, setText] = useState(String(value));
-
-  useEffect(() => setText(String(value)), [value]);
-
-  return (
-    <input
-      type="text"
-      inputMode="decimal"
-      value={text}
-      aria-label={label}
-      onChange={(event) => {
-        const next = event.target.value;
-        if (!/^-?\d*(\.\d*)?$/.test(next)) return;
-        setText(next);
-        if (next !== '' && next !== '-' && next !== '.' && next !== '-.') onChange(Number(next));
-      }}
-      onBlur={() => {
-        if (text === '' || text === '-' || text === '.' || text === '-.') setText(String(value));
-      }}
-      className="w-full rounded-lg border border-blue-100 bg-white px-3 py-2 font-mono text-sm text-blue-950 outline-none focus:border-blue-400"
-    />
   );
 }
