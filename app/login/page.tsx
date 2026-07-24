@@ -63,7 +63,7 @@ export default function LoginPage() {
           <div className="relative p-8">
             {/* ── Logo / brand ── */}
             <div className="mb-8 text-center">
-              <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center">
                 <Image src="/logo/B-one Production (1).png" alt="Beone Production logo" width={56} height={56} className="h-full w-full object-contain" priority />
               </div>
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-blue-600">Beone Production</p>

@@ -61,9 +61,9 @@ export const api = {
 
   getFields: () => request('/fields'),
   getMyFields: () => request('/fields/mine'),
-  createField: (payload: { name: string; order?: number; boxNames: string[]; roles?: string[]; icon?: string; boxIcons?: string[] }) =>
+  createField: (payload: { name: string; order?: number; boxNames: string[]; icon?: string; boxIcons?: string[] }) =>
     request('/fields', { method: 'POST', body: JSON.stringify(payload) }),
-  updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; roles?: string[]; calcType?: string; groupSplit?: number; icon?: string; boxIcons?: string[] }) =>
+  updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; calcType?: string; groupSplit?: number; icon?: string; boxIcons?: string[] }) =>
     request(`/fields/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteField: (id: string) => request(`/fields/${id}`, { method: 'DELETE' }),
 };
