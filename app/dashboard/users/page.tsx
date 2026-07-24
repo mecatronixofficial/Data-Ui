@@ -24,6 +24,8 @@ export default function UsersPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [passwordModal, setPasswordModal] = useState<PasswordModal | null>(null);
 
   async function load() {
@@ -55,6 +57,7 @@ export default function UsersPage() {
       setError(`An account with the email "${normalizedEmail}" already exists.`);
       return;
     }
+    setCreating(true);
     try {
       await api.createUser({ name: name.trim(), email: normalizedEmail, password, role });
       setSuccess(`${role === 'admin' ? 'Admin' : 'User'} account created.`);
@@ -62,16 +65,23 @@ export default function UsersPage() {
       load();
     } catch (err: any) {
       setError(err.message || 'Could not create account');
+    } finally {
+      setCreating(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remove this account?')) return;
+    if (deletingId || !confirm('Remove this account?')) return;
+    setError(''); setSuccess('');
+    setDeletingId(id);
     try {
       await api.deleteUser(id);
       setUsers((prev) => prev.filter((u) => u._id !== id));
+      setSuccess('Account removed.');
     } catch (err: any) {
       setError(err.message || 'Could not remove account');
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -85,6 +95,7 @@ export default function UsersPage() {
     try {
       await api.updateUser(passwordModal.user._id, { password: passwordModal.newPassword });
       setPasswordModal(null);
+      setError('');
       setSuccess(`Password updated for ${passwordModal.user.name}.`);
     } catch (err: any) {
       setPasswordModal((m) => m && ({ ...m, saving: false, error: err.message || 'Could not update password' }));
@@ -161,10 +172,10 @@ export default function UsersPage() {
             </select>
           </div>
           <div className="sm:col-span-2 lg:col-span-4">
-            <button type="submit"
-              className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,107,196,0.45)] active:translate-y-0">
+            <button type="submit" disabled={creating}
+              className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,107,196,0.45)] active:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0">
               <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
-              <span className="relative flex items-center gap-2"><FiUserPlus size={15} /> Create account</span>
+              <span className="relative flex items-center gap-2"><FiUserPlus size={15} /> {creating ? 'Creating…' : 'Create account'}</span>
             </button>
           </div>
         </div>
@@ -201,6 +212,9 @@ export default function UsersPage() {
                   </div>
                 </td></tr>
               )}
+              {!loading && users.length === 0 && (
+                <tr><td colSpan={4} className="px-5 py-10 text-center text-sm text-blue-900/40">No accounts yet.</td></tr>
+              )}
               {!loading && users.map((u) => (
                 <tr key={u._id} className="border-b border-blue-50 transition last:border-0 hover:bg-blue-50/40">
                   <td className="px-5 py-4 font-medium text-blue-950">{u.name}</td>
@@ -215,19 +229,23 @@ export default function UsersPage() {
                       {/* Change password */}
                       <button
                         onClick={() => setPasswordModal({ user: u, newPassword: '', saving: false, error: '' })}
+                        disabled={deletingId === u._id}
                         aria-label="Change password"
                         title="Change password"
-                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-600 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-600 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:opacity-40"
                       >
                         <FiKey size={14} />
                       </button>
                       {/* Delete */}
                       <button
                         onClick={() => handleDelete(u._id)}
+                        disabled={deletingId === u._id}
                         aria-label="Remove user"
-                        className="rounded-lg p-2 text-blue-900/30 transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                        className="rounded-lg p-2 text-blue-900/30 transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:opacity-40"
                       >
-                        <FiTrash2 size={14} />
+                        {deletingId === u._id
+                          ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-red-200 border-t-red-500" />
+                          : <FiTrash2 size={14} />}
                       </button>
                     </div>
                   </td>

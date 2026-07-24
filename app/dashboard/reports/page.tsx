@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiAlertCircle, FiCheck, FiColumns, FiDownload, FiEdit2, FiFileText, FiFilter, FiSearch, FiTrash2, FiX } from 'react-icons/fi';
+import { FiAlertCircle, FiCheck, FiColumns, FiDownload, FiEdit2, FiFileText, FiFilter, FiFlag, FiSearch, FiTrash2, FiX } from 'react-icons/fi';
 import { api, exportUrl } from '@/lib/api';
 import { type BoxDetail } from '@/components/TallyBox';
 import { type Operator } from '@/components/OperatorToggle';
 import DynamicFieldsForm, { FinalTotalCard, type FieldValue, fieldTotal } from '@/components/DynamicFieldsForm';
 
-type FieldMeta = { _id: string; name: string; order: number; boxNames: string[] };
+type FieldMeta = { name: string; order: number; boxNames: string[] };
 type ColumnDef = { key: string; label: string };
 
 const FIXED_COLUMNS: ColumnDef[] = [
@@ -16,6 +16,7 @@ const FIXED_COLUMNS: ColumnDef[] = [
   { key: 'date', label: 'Date' },
   { key: 'total', label: 'Final Total' },
   { key: 'addedBy', label: 'Added by' },
+  { key: 'updatedBy', label: 'Updated by' },
 ];
 
 type EntryField = {
@@ -25,7 +26,7 @@ type EntryField = {
 type Entry = {
   _id: string; name: string; date: string; fields: EntryField[];
   fieldOperators: string[]; finalTotal: number; createdAt: string;
-  updatedAt: string; createdBy?: { name: string };
+  updatedAt: string; createdBy?: { name: string }; updatedBy?: { name: string };
 };
 type EditingEntry = { _id: string; name: string; date: string; fields: FieldValue[] };
 
@@ -67,7 +68,7 @@ export default function ReportsPage() {
           if (!seen.has(f.name)) seen.set(f.name, { order: fi, boxNames: f.boxNames });
         }
       }
-      setFields(Array.from(seen.entries()).map(([n, { order, boxNames }], i) => ({ _id: String(i), name: n, order, boxNames })));
+      setFields(Array.from(seen.entries()).map(([n, { order, boxNames }]) => ({ name: n, order, boxNames })));
     } catch (err: any) {
       setError(err.message || 'Could not load reports');
     } finally { setLoading(false); }
@@ -79,7 +80,7 @@ export default function ReportsPage() {
     ), [fields]);
 
   const allColumns = useMemo<ColumnDef[]>(
-    () => [FIXED_COLUMNS[0], FIXED_COLUMNS[1], ...dynamicColumns, FIXED_COLUMNS[2], FIXED_COLUMNS[3]],
+    () => [FIXED_COLUMNS[0], FIXED_COLUMNS[1], ...dynamicColumns, FIXED_COLUMNS[2], FIXED_COLUMNS[3], FIXED_COLUMNS[4]],
     [dynamicColumns],
   );
 
@@ -206,9 +207,9 @@ export default function ReportsPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             {canManageReportSettings && (
-              <button onClick={() => setColumnsOpen((o) => !o)}
+              <button onClick={() => { setColumnsOpen((o) => !o); setColumnsFeedback(''); }}
                 className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-sm transition hover:bg-white/15">
-                <FiColumns size={16} /> Columns
+                <FiColumns size={16} /> Field
               </button>
             )}
             <a href={exportUrl({ name, startDate, endDate })}
@@ -230,20 +231,21 @@ export default function ReportsPage() {
           <div className="mb-5 flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-[0_4px_12px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)]">
-                <FiColumns size={17} />
+                <FiFlag size={17} />
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-600">Super Admin</p>
-                <h2 className="font-display text-xl text-blue-950">Report columns</h2>
+                <h2 className="font-display text-xl text-blue-950">Report field</h2>
               </div>
             </div>
             <button onClick={() => setColumnsOpen(false)} aria-label="Close" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-700"><FiX /></button>
           </div>
-          <p className="mb-4 text-sm text-blue-900/55">Choose which columns everyone sees. Name is always shown.</p>
+          <p className="mb-3 text-xs text-blue-900/50">Name, Date, Final Total, Added by and Updated by always show. Choose which extra field boxes appear in the table below.</p>
           <div className="mb-5 flex flex-wrap gap-2">
-            {allColumns.map((col) => (
-              <label key={col.key} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition ${draftColumns.has(col.key) ? 'border-blue-400 bg-blue-50 text-blue-900' : 'border-blue-100 bg-white text-blue-900/50'} ${col.key === 'name' ? 'cursor-default opacity-60' : ''}`}>
-                <input type="checkbox" checked={col.key === 'name' || draftColumns.has(col.key)} disabled={col.key === 'name'} onChange={() => toggleDraftColumn(col.key)} className="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500" />
+            {dynamicColumns.length === 0 && <p className="text-sm text-blue-900/40">No extra fields configured yet.</p>}
+            {dynamicColumns.map((col) => (
+              <label key={col.key} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition ${draftColumns.has(col.key) ? 'border-blue-400 bg-blue-50 text-blue-900' : 'border-blue-100 bg-white text-blue-900/50'}`}>
+                <input type="checkbox" checked={draftColumns.has(col.key)} onChange={() => toggleDraftColumn(col.key)} className="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500" />
                 {col.label}
               </label>
             ))}
@@ -375,7 +377,10 @@ export default function ReportsPage() {
                       </td>
                     );
                     if (col.key === 'addedBy') return <td key={col.key} className="px-5 py-3 text-blue-900/50">{e.createdBy?.name || '—'}</td>;
-                    const [, fieldName, boxIndexRaw] = col.key.split(':');
+                    if (col.key === 'updatedBy') return <td key={col.key} className="px-5 py-3 text-blue-900/50">{wasEdited(e) ? (e.updatedBy?.name || '—') : '—'}</td>;
+                    const lastColon = col.key.lastIndexOf(':');
+                    const fieldName = col.key.slice('box:'.length, lastColon);
+                    const boxIndexRaw = col.key.slice(lastColon + 1);
                     const value = boxValue(e, fieldName, Number(boxIndexRaw));
                     return (
                       <td key={col.key} className="px-5 py-3 text-blue-900/60">

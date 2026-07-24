@@ -5,17 +5,40 @@ import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 
+interface DashboardUser {
+  name: string;
+  role: string;
+  permissions: Record<string, boolean>;
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [user, setUser] = useState<{ name: string; role: string; permissions: Record<string, boolean> } | null>(null);
+  const [user, setUser] = useState<DashboardUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     api
       .me()
-      .then((u) => setUser(u))
-      .catch(() => router.push('/login'))
-      .finally(() => setLoading(false));
+      .then((u) => {
+        if (cancelled) return;
+        setUser({
+          name: u?.name || '',
+          role: u?.role || 'user',
+          permissions: u?.permissions || {},
+        });
+      })
+      .catch(() => {
+        if (!cancelled) router.push('/login');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   if (loading) {

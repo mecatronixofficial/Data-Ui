@@ -14,7 +14,6 @@ type FieldRow = {
   icon: string;
   boxNames: string[];
   boxIcons: string[];
-  roles: string[];
   calcType: CalcType;
   groupSplit: number;
 };
@@ -50,7 +49,6 @@ export default function FieldsPage() {
             icon: f.icon || '',
             boxNames: [...f.boxNames],
             boxIcons: f.boxNames.map((_: string, i: number) => f.boxIcons?.[i] || ''),
-            roles: [...f.roles],
             calcType: f.calcType,
             groupSplit: f.groupSplit,
           })),
@@ -74,7 +72,7 @@ export default function FieldsPage() {
     const fieldName = `Field ${rows.length + 1}`;
     setRows((prev) => [
       ...prev,
-      { name: fieldName, icon: '', boxNames: ['Box 1'], boxIcons: [''], roles: [], calcType: 'signed', groupSplit: 0 },
+      { name: fieldName, icon: '', boxNames: ['Box 1'], boxIcons: [''], calcType: 'signed', groupSplit: 0 },
     ]);
     setError('');
     setFeedback({ type: 'added', text: `"${fieldName}" added. Click Save to keep it.` });
@@ -128,10 +126,13 @@ export default function FieldsPage() {
   function removeBox(index: number, boxIndex: number) {
     const row = rows[index];
     if (row.boxNames.length <= 1) return;
-    updateRow(index, {
-      boxNames: row.boxNames.filter((_, i) => i !== boxIndex),
-      boxIcons: row.boxIcons.filter((_, i) => i !== boxIndex),
-    });
+    const boxNames = row.boxNames.filter((_, i) => i !== boxIndex);
+    const boxIcons = row.boxIcons.filter((_, i) => i !== boxIndex);
+    const changes: Partial<FieldRow> = { boxNames, boxIcons };
+    if (row.calcType === 'grouped') {
+      changes.groupSplit = Math.min(row.groupSplit, Math.max(1, boxNames.length - 1));
+    }
+    updateRow(index, changes);
   }
 
   function updateBoxName(index: number, boxIndex: number, value: string) {
@@ -159,35 +160,35 @@ export default function FieldsPage() {
   async function save() {
     setSaving(true);
     setError('');
+    const saved: FieldRow[] = [...rows];
     try {
-      const saved: FieldRow[] = [];
       for (let index = 0; index < rows.length; index += 1) {
         const row = rows[index];
         const payload = {
           name: row.name.trim() || `Field ${index + 1}`,
           order: index,
           boxNames: row.boxNames.map((boxName, i) => boxName.trim() || `Box ${i + 1}`),
-          roles: row.roles,
           calcType: row.calcType,
           groupSplit: row.groupSplit,
           icon: row.icon,
           boxIcons: row.boxIcons,
         };
         const result = row._id ? await api.updateField(row._id, payload) : await api.createField(payload);
-        saved.push({
+        saved[index] = {
           _id: result._id,
           name: result.name,
           icon: result.icon || '',
           boxNames: result.boxNames,
           boxIcons: result.boxNames.map((_: string, i: number) => result.boxIcons?.[i] || ''),
-          roles: result.roles,
           calcType: result.calcType,
           groupSplit: result.groupSplit,
-        });
+        };
       }
       setRows(saved);
       setFeedback({ type: 'saved', text: 'Fields saved. All users will see these changes.' });
     } catch (err: any) {
+      // Persist whichever fields already saved successfully so retrying doesn't recreate them.
+      setRows(saved);
       setError(err.message || 'Could not save fields');
     } finally {
       setSaving(false);
@@ -223,7 +224,7 @@ export default function FieldsPage() {
       {rows.map((row, index) => (
         <section key={row._id || `new-${index}`} className="rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
           <div className="mb-5 flex items-center gap-3">
-            <IconPicker value={row.icon} onChange={(icon) => canEdit && updateRow(index, { icon })} />
+            <IconPicker value={row.icon} onChange={(icon) => updateRow(index, { icon })} disabled={!canEdit} />
             <input
               aria-label="Field name"
               value={row.name}
@@ -252,7 +253,8 @@ export default function FieldsPage() {
                 <IconPicker
                   size="sm"
                   value={row.boxIcons[boxIndex]}
-                  onChange={(icon) => canEdit && updateBoxIcon(index, boxIndex, icon)}
+                  onChange={(icon) => updateBoxIcon(index, boxIndex, icon)}
+                  disabled={!canEdit}
                 />
                 <label className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-blue-900/55">
                   Box {boxIndex + 1}
@@ -312,7 +314,12 @@ export default function FieldsPage() {
                     max={row.boxNames.length - 1}
                     value={row.groupSplit}
                     readOnly={!canEdit}
-                    onChange={(event) => canEdit && updateRow(index, { groupSplit: Number(event.target.value) || 1 })}
+                    onChange={(event) => {
+                      if (!canEdit) return;
+                      const max = Math.max(1, row.boxNames.length - 1);
+                      const raw = Number(event.target.value) || 1;
+                      updateRow(index, { groupSplit: Math.min(Math.max(1, raw), max) });
+                    }}
                     className={`w-16 rounded-lg border border-blue-100 px-2 py-1.5 text-center text-sm text-blue-950 outline-none ${canEdit ? 'bg-blue-50/50 focus:border-blue-400' : 'bg-transparent cursor-default'}`}
                   />
                   <span className="text-blue-900/45">of {row.boxNames.length}</span>

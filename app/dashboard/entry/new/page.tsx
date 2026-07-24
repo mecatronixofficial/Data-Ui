@@ -159,7 +159,7 @@ export default function NewEntryPage() {
       return;
     }
     if (fields.length === 0) {
-      setError('No fields are configured for your role yet. Contact your admin.');
+      setError('No fields are configured yet. Contact your admin.');
       return;
     }
     setSaving(true);
@@ -269,7 +269,7 @@ export default function NewEntryPage() {
       {/* ── Fields ── */}
       {fields.length === 0 ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          No fields are configured for your role yet. Ask a superadmin to set up fields.
+          No fields are configured yet. Ask a superadmin to set up fields.
         </div>
       ) : (
         <>

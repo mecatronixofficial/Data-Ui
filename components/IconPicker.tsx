@@ -60,10 +60,12 @@ export default function IconPicker({
   value,
   onChange,
   size = 'md',
+  disabled = false,
 }: {
   value?: string;
   onChange: (icon: string) => void;
   size?: 'sm' | 'md';
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -83,10 +85,11 @@ export default function IconPicker({
     <div ref={ref} className="relative shrink-0">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => !disabled && setOpen((o) => !o)}
         aria-label="Choose icon"
         aria-expanded={open}
-        className={`flex ${dims} items-center justify-center rounded-xl bg-blue-100 text-blue-700 transition hover:bg-blue-200`}
+        aria-disabled={disabled}
+        className={`flex ${dims} items-center justify-center rounded-xl bg-blue-100 text-blue-700 transition ${disabled ? 'cursor-default opacity-70' : 'hover:bg-blue-200'}`}
       >
         <FieldIcon icon={value} size={iconSize} />
       </button>
