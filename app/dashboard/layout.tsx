@@ -7,7 +7,7 @@ import { api } from '@/lib/api';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; role: string; permissions: Record<string, boolean> } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,12 +34,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen bg-blue-50/60">
-      <Sidebar role={user.role} name={user.name} />
+    <div className="flex min-h-screen flex-col bg-blue-50/60 lg:flex-row">
+      <Sidebar role={user.role} name={user.name} permissions={user.permissions} />
       <main className="relative min-h-screen min-w-0 flex-1 overflow-hidden bg-gradient-to-br from-white via-blue-50/35 to-blue-100/45">
         <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-blue-200/25 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-blue-200/20 blur-3xl" />
-        <div className="relative mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10 lg:px-10">{children}</div>
+        <div className="relative mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10 lg:px-10">{children}</div>
       </main>
     </div>
   );

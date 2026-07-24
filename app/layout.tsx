@@ -21,8 +21,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Bone Production — Data Entry',
-  description: 'Bone Production data entry and reporting',
+  title: 'Beone Production — Data Entry',
+  description: 'Beone Production data entry and reporting',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -31,9 +31,6 @@ async function request(path: string, options: RequestInit = {}) {
 export const api = {
   login: (email: string, password: string) =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
-  googleLogin: () => {
-    window.location.assign(`${BASE}/auth/google`);
-  },
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request('/auth/me'),
 
@@ -43,9 +40,6 @@ export const api = {
     request(`/entries/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   myEntries: () => request('/entries/me'),
   getEntry: (id: string) => request(`/entries/${id}`),
-  getBoxNames: () => request('/entries/box-names'),
-  updateBoxNames: (payload: { field1BoxNames: string[]; field2BoxNames: string[] }) =>
-    request('/entries/box-names', { method: 'PUT', body: JSON.stringify(payload) }),
   allEntries: (params: { name?: string; startDate?: string; endDate?: string }) => {
     const qs = new URLSearchParams(
       Object.entries(params).filter(([, v]) => !!v) as [string, string][],
@@ -58,11 +52,23 @@ export const api = {
   createUser: (payload: any) =>
     request('/users', { method: 'POST', body: JSON.stringify(payload) }),
   deleteUser: (id: string) => request(`/users/${id}`, { method: 'DELETE' }),
+
+  getFields: () => request('/fields'),
+  getMyFields: () => request('/fields/mine'),
+  createField: (payload: { name: string; order?: number; boxNames: string[]; roles?: string[]; icon?: string; boxIcons?: string[] }) =>
+    request('/fields', { method: 'POST', body: JSON.stringify(payload) }),
+  updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; roles?: string[]; icon?: string; boxIcons?: string[] }) =>
+    request(`/fields/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteField: (id: string) => request(`/fields/${id}`, { method: 'DELETE' }),
 };
 
-export function exportUrl(params: { name?: string; startDate?: string; endDate?: string }) {
+// Fixed set of account roles. There is no admin UI to manage these on purpose.
+export const ROLE_NAMES = ['user', 'admin', 'superadmin'] as const;
+
+export function exportUrl(params: { name?: string; startDate?: string; endDate?: string }, format: 'xlsx' | 'pdf' = 'xlsx') {
   const qs = new URLSearchParams(
     Object.entries(params).filter(([, v]) => !!v) as [string, string][],
   ).toString();
-  return `${BASE}/entries/export${qs ? `?${qs}` : ''}`;
+  const path = format === 'pdf' ? '/entries/export/pdf' : '/entries/export';
+  return `${BASE}${path}${qs ? `?${qs}` : ''}`;
 }
