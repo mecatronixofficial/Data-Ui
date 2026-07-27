@@ -6,13 +6,14 @@ import { FiAlertCircle, FiCheck, FiEdit3, FiX } from 'react-icons/fi';
 import { type BoxDetail } from '@/components/TallyBox';
 import { type Operator } from '@/components/OperatorToggle';
 import DynamicFieldsForm, { FinalTotalCard, type FieldValue, fieldTotal } from '@/components/DynamicFieldsForm';
-import { api } from '@/lib/api';
+import { api, blankBoxDetail, type BoxFieldDef } from '@/lib/api';
 
 type FieldConfig = {
   name: string;
   icon?: string;
   boxNames: string[];
   boxIcons?: string[];
+  boxFields?: BoxFieldDef[][];
   calcType: 'grouped' | 'signed';
   groupSplit: number;
 };
@@ -23,6 +24,7 @@ function blankField(config: FieldConfig): FieldValue {
     icon: config.icon,
     boxNames: [...config.boxNames],
     boxIcons: config.boxIcons ? [...config.boxIcons] : undefined,
+    boxFields: config.boxFields ? [...config.boxFields] : undefined,
     boxes: Array(config.boxNames.length).fill(0),
     details: config.boxNames.map(() => []),
     calcType: config.calcType,
@@ -37,7 +39,14 @@ export default function NewEntryPage() {
   const editingId = params?.id;
   const isEditing = Boolean(editingId);
   const [name, setName] = useState('');
+  const [defaultName, setDefaultName] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const [fieldConfigs, setFieldConfigs] = useState<FieldConfig[]>([]);
   const [fields, setFields] = useState<FieldValue[]>([]);
@@ -61,11 +70,14 @@ export default function NewEntryPage() {
           icon: f.icon,
           boxNames: f.boxNames,
           boxIcons: f.boxIcons,
+          boxFields: f.boxFields,
           calcType: f.calcType,
           groupSplit: f.groupSplit,
         }));
         setFieldConfigs(configs);
         setFields(configs.map(blankField));
+        setDefaultName(user.name);
+        setName(user.name);
       })
       .catch(() => router.replace('/login'))
       .finally(() => setLoadingEntry(false));
@@ -79,6 +91,7 @@ export default function NewEntryPage() {
           router.replace('/dashboard');
           return null;
         }
+        setDefaultName(user.name);
         return api.getEntry(editingId);
       })
       .then((entry) => {
@@ -88,15 +101,16 @@ export default function NewEntryPage() {
         const loadedFields: FieldValue[] = entry.fields.map((f: any) => ({
           name: f.name,
           boxNames: [...f.boxNames],
+          boxFields: f.boxFields,
           boxes: [...f.boxes],
           details: f.boxes.map((value: number, index: number) =>
-            f.details?.[index]?.length ? f.details[index] : [{ name: '', value }],
+            f.details?.[index]?.length ? f.details[index] : [blankBoxDetail(value)],
           ),
           calcType: f.calcType,
           groupSplit: f.groupSplit,
           operator: (f.operator as Operator) || '+',
         }));
-        setFieldConfigs(loadedFields.map((f) => ({ name: f.name, boxNames: f.boxNames, calcType: f.calcType, groupSplit: f.groupSplit })));
+        setFieldConfigs(loadedFields.map((f) => ({ name: f.name, boxNames: f.boxNames, boxFields: f.boxFields, calcType: f.calcType, groupSplit: f.groupSplit })));
         setFields(loadedFields);
       })
       .catch((err: any) => setError(err.message || 'Could not load entry'))
@@ -125,16 +139,8 @@ export default function NewEntryPage() {
     });
   }
 
-  function updateFieldOperator(fieldIndex: number, op: Operator) {
-    setFields((prev) => {
-      const next = [...prev];
-      next[fieldIndex] = { ...next[fieldIndex], operator: op };
-      return next;
-    });
-  }
-
   function resetForm() {
-    setName('');
+    setName(defaultName);
     setDate(new Date().toISOString().split('T')[0]);
     setFields(fieldConfigs.map(blankField));
     setError('');
@@ -206,62 +212,50 @@ export default function NewEntryPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
 
       {/* ── Page header ── */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-950 via-blue-800 to-blue-600 px-8 py-7 text-white shadow-[0_20px_50px_rgba(0,107,196,0.30)]">
-        {/* depth layers */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-400/15 blur-3xl" />
-          <div className="absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-blue-300/10 blur-3xl" />
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
-          <div className="absolute -left-8 -top-8 h-[180%] w-2/5 rotate-12 bg-gradient-to-br from-white/8 via-white/4 to-transparent" />
-        </div>
-        {/* floating shape */}
-        <div className="pointer-events-none absolute right-8 top-4 h-16 w-16 rounded-xl border border-white/10 bg-white/5 rotate-12 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]" />
-
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative rounded-2xl p-1">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-blue-200/60">
+            <p className="mb-1 text-xs text-blue-900/50">
               {isEditing ? 'Admin action' : 'New record'}
             </p>
-            <h1 className="font-display text-3xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)] sm:text-4xl">
+            <h1 className="font-display text-lg text-blue-950 sm:text-xl">
               {isEditing ? 'Edit Entry' : 'Data Entry'}
             </h1>
           </div>
 
-          {/* Date input — sits inside the hero */}
-          <div className="sm:text-right">
-            <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-200/60">Date</label>
+          {/* Date + live time */}
+          <div className="flex flex-col items-start gap-1 sm:items-end">
+            <p className="text-xs text-blue-900/50">
+              {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </p>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="rounded-xl border border-white/15 bg-white/10 px-3.5 py-2.5 font-mono text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] outline-none backdrop-blur-sm transition placeholder:text-white/40 focus:border-white/30 focus:ring-2 focus:ring-white/15"
+              className="bg-blue-50/60 font-mono text-xs text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
             />
           </div>
         </div>
       </div>
 
       {/* ── Record details (name) ── */}
-      <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
-        {/* top-edge 3-D highlight */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/60 to-transparent" />
-
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-[0_4px_12px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)]">
-            <FiEdit3 size={18} aria-hidden="true" />
+      <div className="py-1 flex flex-row items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-[0_4px_12px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)]">
+            <FiEdit3 size={11} aria-hidden="true" />
           </div>
-          <h2 className="font-display text-xl text-blue-950">Record details</h2>
+          <h2 className="font-display text-base text-blue-950">Record details</h2>
         </div>
 
         <div>
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Name</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Entry name"
-            className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+            className="w-full rounded-lg border border-blue-100 bg-blue-50/60 px-2.5 py-1.5 text-xs text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
           />
         </div>
       </div>
@@ -275,9 +269,9 @@ export default function NewEntryPage() {
         <>
           <DynamicFieldsForm
             fields={fields}
+            currentUserName={defaultName}
             onBoxChange={updateBox}
             onDetailsChange={updateDetails}
-            onOperatorChange={updateFieldOperator}
           />
           <FinalTotalCard
             fieldNames={fields.map((f) => f.name)}
@@ -328,11 +322,10 @@ export default function NewEntryPage() {
             {/* top-edge highlight */}
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/60 to-transparent" />
 
-            <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.10)] ${
-              feedback === 'saved'
+            <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.10)] ${feedback === 'saved'
                 ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-[0_4px_14px_rgba(0,107,196,0.35)]'
                 : 'bg-amber-100 text-amber-700'
-            }`}>
+              }`}>
               {feedback === 'saved' ? <FiCheck size={24} /> : <FiX size={24} />}
             </div>
 

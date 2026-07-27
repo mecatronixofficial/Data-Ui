@@ -1,7 +1,6 @@
 'use client';
 
 export default function TotalPill({
-  label,
   value,
   emphasize,
   dark,
@@ -33,11 +32,8 @@ export default function TotalPill({
 
   return (
     <div className="flex flex-col items-center">
-      <span className={`mb-1 text-[10px] uppercase tracking-wider ${dark ? 'text-blue-50/60' : 'text-blue-900/45'}`}>
-        {label}
-      </span>
       <span
-        className={`rounded-lg px-3 py-1.5 font-mono text-lg tabular ${signStyle || defaultStyle}`}
+        className={`rounded-lg px-2 py-1 font-mono text-sm tabular ${signStyle || defaultStyle}`}
       >
         {value}
       </span>

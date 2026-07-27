@@ -8,33 +8,30 @@ import EditAccountModal from '@/components/EditAccountModal';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 
-type AccountRow = { _id: string; name: string; email: string; role: string; assignedAdminId?: string | null; isActive?: boolean };
+type AdminRow = { _id: string; name: string; email: string; role: string; isActive?: boolean };
 
-export default function UsersPage() {
+export default function AdminsPage() {
   const router = useRouter();
-  const [users, setUsers] = useState<AccountRow[]>([]);
-  const [admins, setAdmins] = useState<AccountRow[]>([]);
+  const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [assignedAdminId, setAssignedAdminId] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<AccountRow | null>(null);
-  const [resetting, setResetting] = useState<AccountRow | null>(null);
-  const [deleting, setDeleting] = useState<AccountRow | null>(null);
+  const [editing, setEditing] = useState<AdminRow | null>(null);
+  const [resetting, setResetting] = useState<AdminRow | null>(null);
+  const [deleting, setDeleting] = useState<AdminRow | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
     try {
-      const all: AccountRow[] = await api.listUsers();
-      setUsers(all.filter((u) => u.role === 'user'));
+      const all: AdminRow[] = await api.listUsers();
       setAdmins(all.filter((u) => u.role === 'admin'));
     } catch (err: any) {
-      setError(err.message || 'Could not load users');
+      setError(err.message || 'Could not load admins');
     } finally {
       setLoading(false);
     }
@@ -50,41 +47,35 @@ export default function UsersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
-  const adminById = new Map(admins.map((a) => [a._id, a]));
-
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError(''); setSuccess('');
     const normalizedEmail = email.trim().toLocaleLowerCase();
-    if (users.some((u) => u.email.trim().toLocaleLowerCase() === normalizedEmail)) {
+    if (admins.some((a) => a.email.trim().toLocaleLowerCase() === normalizedEmail)) {
       setError(`An account with the email "${normalizedEmail}" already exists.`);
-      return;
-    }
-    if (!assignedAdminId) {
-      setError('Select an admin for this user.');
       return;
     }
     setCreating(true);
     try {
-      await api.createUser({ name: name.trim(), email: normalizedEmail, password, role: 'user', assignedAdminId });
-      setSuccess('User account created.');
-      setName(''); setEmail(''); setPassword(''); setAssignedAdminId('');
+      await api.createUser({ name: name.trim(), email: normalizedEmail, password, role: 'admin' });
+      setSuccess('Admin account created.');
+      setName(''); setEmail(''); setPassword('');
       load();
     } catch (err: any) {
-      setError(err.message || 'Could not create user account');
+      setError(err.message || 'Could not create admin account');
     } finally {
       setCreating(false);
     }
   }
 
-  async function handleToggleStatus(user: AccountRow) {
+  async function handleToggleStatus(admin: AdminRow) {
     setError(''); setSuccess('');
-    const nextActive = user.isActive === false;
-    setTogglingId(user._id);
+    const nextActive = admin.isActive === false;
+    setTogglingId(admin._id);
     try {
-      await api.setAccountStatus(user._id, nextActive);
-      setUsers((prev) => prev.map((u) => (u._id === user._id ? { ...u, isActive: nextActive } : u)));
-      setSuccess(`${user.name} is now ${nextActive ? 'active' : 'inactive'}.`);
+      await api.setAccountStatus(admin._id, nextActive);
+      setAdmins((prev) => prev.map((a) => (a._id === admin._id ? { ...a, isActive: nextActive } : a)));
+      setSuccess(`${admin.name} is now ${nextActive ? 'active' : 'inactive'}.`);
     } catch (err: any) {
       setError(err.message || 'Could not update status');
     } finally {
@@ -107,21 +98,21 @@ export default function UsersPage() {
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-blue-200/60">Access control</p>
-            <h1 className="font-display text-3xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)] sm:text-4xl">Users</h1>
+            <h1 className="font-display text-3xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)] sm:text-4xl">Admins</h1>
           </div>
           <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-sm">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.2)]">
               <FiUsers size={17} className="text-white" />
             </div>
             <div>
-              <p className="font-display text-xl leading-none text-white">{users.length}</p>
-              <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-wider text-blue-200/60">Total users</p>
+              <p className="font-display text-xl leading-none text-white">{admins.length}</p>
+              <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-wider text-blue-200/60">Total admins</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Create user form ── */}
+      {/* ── Create admin form ── */}
       <form onSubmit={handleCreate}
         className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/60 to-transparent" />
@@ -129,9 +120,9 @@ export default function UsersPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-[0_4px_12px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)]">
             <FiUserPlus size={17} />
           </div>
-          <h2 className="font-display text-xl text-blue-950">Create a user</h2>
+          <h2 className="font-display text-xl text-blue-950">Create an admin</h2>
         </div>
-        <div className="grid grid-cols-1 items-end gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 items-end gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Name</label>
             <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name"
@@ -147,24 +138,11 @@ export default function UsersPage() {
             <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimum 6 characters"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
-          <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Select admin</label>
-            <select required value={assignedAdminId} onChange={(e) => setAssignedAdminId(e.target.value)}
-              className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15">
-              <option value="" disabled>Choose an admin</option>
-              {admins.map((a) => (
-                <option key={a._id} value={a._id}>{a.name} ({a.email})</option>
-              ))}
-            </select>
-          </div>
-          <div className="sm:col-span-2 lg:col-span-4">
-            {!loading && admins.length === 0 && (
-              <p className="mb-3 text-xs text-blue-900/50">No admin accounts yet — create one on the Admins page first.</p>
-            )}
-            <button type="submit" disabled={creating || admins.length === 0}
+          <div className="sm:col-span-2 lg:col-span-3">
+            <button type="submit" disabled={creating}
               className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,107,196,0.45)] active:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0">
               <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
-              <span className="relative flex items-center gap-2"><FiUserPlus size={15} /> {creating ? 'Creating…' : 'Create user'}</span>
+              <span className="relative flex items-center gap-2"><FiUserPlus size={15} /> {creating ? 'Creating…' : 'Create admin'}</span>
             </button>
           </div>
         </div>
@@ -173,53 +151,49 @@ export default function UsersPage() {
       {error && <p className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><FiAlertCircle />{error}</p>}
       {success && <p className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"><FiCheckCircle />{success}</p>}
 
-      {/* ── Users table ── */}
+      {/* ── Admins table ── */}
       <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/60 to-transparent" />
         <div className="flex items-center gap-3 border-b border-blue-100 px-5 py-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-[0_4px_12px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)]">
             <FiUsers size={17} />
           </div>
-          <h2 className="font-display text-xl text-blue-950">All users</h2>
+          <h2 className="font-display text-xl text-blue-950">All admins</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-[520px] text-sm">
             <thead>
               <tr className="border-b border-blue-100 bg-blue-50/60 text-left text-xs uppercase tracking-wider text-blue-900/55">
                 <th className="px-5 py-3 font-medium">Name</th>
                 <th className="px-5 py-3 font-medium">Email</th>
-                <th className="px-5 py-3 font-medium">Admin</th>
                 <th className="px-5 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={4} className="px-5 py-10 text-center">
+                <tr><td colSpan={3} className="px-5 py-10 text-center">
                   <div className="flex items-center justify-center gap-2 text-blue-900/40">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-500" />
                     <span className="font-mono text-xs">loading…</span>
                   </div>
                 </td></tr>
               )}
-              {!loading && users.length === 0 && (
-                <tr><td colSpan={4} className="px-5 py-10 text-center text-sm text-blue-900/40">No users yet.</td></tr>
+              {!loading && admins.length === 0 && (
+                <tr><td colSpan={3} className="px-5 py-10 text-center text-sm text-blue-900/40">No admins yet.</td></tr>
               )}
-              {!loading && users.map((u) => (
-                <tr key={u._id} className="border-b border-blue-50 transition last:border-0 hover:bg-blue-50/40">
-                  <td className="px-5 py-4 font-medium text-blue-950">{u.name}</td>
-                  <td className="px-5 py-3 text-blue-900/60">{u.email}</td>
-                  <td className="px-5 py-3 text-blue-900/60">
-                    {u.assignedAdminId ? (adminById.get(u.assignedAdminId)?.name || '—') : '—'}
-                  </td>
+              {!loading && admins.map((a) => (
+                <tr key={a._id} className="border-b border-blue-50 transition last:border-0 hover:bg-blue-50/40">
+                  <td className="px-5 py-4 font-medium text-blue-950">{a.name}</td>
+                  <td className="px-5 py-3 text-blue-900/60">{a.email}</td>
                   <td className="px-5 py-3">
                     <div className="flex items-center justify-end gap-1">
                       <button
-                        onClick={() => handleToggleStatus(u)}
-                        disabled={togglingId === u._id}
-                        aria-label={u.isActive === false ? 'Activate account' : 'Deactivate account'}
-                        title={u.isActive === false ? 'Activate account' : 'Deactivate account'}
+                        onClick={() => handleToggleStatus(a)}
+                        disabled={togglingId === a._id}
+                        aria-label={a.isActive === false ? 'Activate account' : 'Deactivate account'}
+                        title={a.isActive === false ? 'Activate account' : 'Deactivate account'}
                         className={`flex items-center gap-1.5 rounded-lg p-2 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 ${
-                          u.isActive === false
+                          a.isActive === false
                             ? 'text-red-600 hover:bg-red-50 focus-visible:ring-red-300'
                             : 'text-emerald-600 hover:bg-emerald-50 focus-visible:ring-emerald-300'
                         }`}
@@ -227,22 +201,22 @@ export default function UsersPage() {
                         <FiPower size={14} />
                       </button>
                       <button
-                        onClick={() => setEditing(u)}
+                        onClick={() => setEditing(a)}
                         aria-label="Edit profile" title="Edit profile"
                         className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-600 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
                       >
                         <FiEdit2 size={14} />
                       </button>
                       <button
-                        onClick={() => setResetting(u)}
+                        onClick={() => setResetting(a)}
                         aria-label="Reset password" title="Reset password"
                         className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-600 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
                       >
                         <FiKey size={14} />
                       </button>
                       <button
-                        onClick={() => setDeleting(u)}
-                        aria-label="Remove user" title="Remove user"
+                        onClick={() => setDeleting(a)}
+                        aria-label="Remove admin" title="Remove admin"
                         className="rounded-lg p-2 text-blue-900/30 transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
                       >
                         <FiTrash2 size={14} />
@@ -261,7 +235,7 @@ export default function UsersPage() {
           user={editing}
           onClose={() => setEditing(null)}
           onSaved={(updated) => {
-            setUsers((prev) => prev.map((u) => (u._id === updated._id ? { ...u, ...updated } : u)));
+            setAdmins((prev) => prev.map((a) => (a._id === updated._id ? { ...a, ...updated } : a)));
             setSuccess('Profile updated.');
           }}
         />
@@ -277,13 +251,13 @@ export default function UsersPage() {
 
       {deleting && (
         <ConfirmDeleteModal
-          title="Remove user"
-          message={`Remove ${deleting.name}'s account? This cannot be undone.`}
+          title="Remove admin"
+          message={`Remove ${deleting.name}'s admin account? This cannot be undone.`}
           onClose={() => setDeleting(null)}
           onConfirm={async () => {
             await api.deleteUser(deleting._id);
-            setUsers((prev) => prev.filter((u) => u._id !== deleting._id));
-            setSuccess('User account removed.');
+            setAdmins((prev) => prev.filter((a) => a._id !== deleting._id));
+            setSuccess('Admin account removed.');
             setDeleting(null);
           }}
         />
