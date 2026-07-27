@@ -7,11 +7,15 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   FiPlusSquare,
   FiBarChart2,
-  FiUsers,
+  FiChevronRight,
   FiLogOut,
   FiHome,
+  FiShield,
   FiTag,
   FiMenu,
+  FiSettings,
+  FiUserPlus,
+  FiUsers,
   FiX,
 } from 'react-icons/fi';
 import { api } from '@/lib/api';
@@ -28,14 +32,32 @@ export default function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [reportsMenuOpen, setReportsMenuOpen] = useState(false);
+
+  const showReportsMenu = role === 'superadmin';
 
   const links = [
     { href: '/dashboard', label: 'Dashboard', icon: FiHome, show: true },
-    { href: '/dashboard/entry/new', label: 'New Entry', icon: FiPlusSquare, show: role === 'admin' || role === 'user' },
-    { href: '/dashboard/reports', label: 'Reports', icon: FiBarChart2, show: permissions?.viewAllReports || role === 'admin' || role === 'superadmin' },
+    { href: '/dashboard/entry/new', label: name || 'New Entry', icon: FiPlusSquare, show: role === 'admin' || role === 'user' },
+    { href: '/dashboard/reports', label: 'Reports', icon: FiBarChart2, show: !showReportsMenu && (permissions?.viewAllReports || role === 'admin' || role === 'superadmin') },
     { href: '/dashboard/fields', label: 'Fields', icon: FiTag, show: permissions?.manageFields || role === 'superadmin' },
-    { href: '/dashboard/users', label: 'Users', icon: FiUsers, show: permissions?.manageUsers },
   ].filter((link) => link.show);
+  const settingsLink = { href: '/dashboard/settings', label: 'Settings', icon: FiSettings };
+
+  const createAccountLinks = [
+    { href: '/dashboard/admins', label: 'Admin', icon: FiShield },
+    { href: '/dashboard/users', label: 'User', icon: FiUsers },
+  ];
+  const showCreateAccount = role === 'superadmin';
+  const createAccountActive = createAccountLinks.some((l) => pathname === l.href);
+
+  const reportsLinks = [
+    { href: '/dashboard/reports', label: 'All Reports', icon: FiBarChart2 },
+    { href: '/dashboard/reports/admin', label: 'Admin Reports', icon: FiShield },
+    { href: '/dashboard/reports/user', label: 'User Reports', icon: FiUsers },
+  ];
+  const reportsActive = pathname === '/dashboard/reports' || pathname.startsWith('/dashboard/reports/');
 
   useEffect(() => {
     setOpen(false);
@@ -120,7 +142,67 @@ export default function Sidebar({
         </div>
 
         {/* ── Nav links ── */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4 scrollbar-hide">
+          {showCreateAccount && (
+            <div
+              className="relative"
+              onMouseEnter={() => setCreateMenuOpen(true)}
+              onMouseLeave={() => setCreateMenuOpen(false)}
+            >
+              <button
+                type="button"
+                onClick={() => setCreateMenuOpen((v) => !v)}
+                aria-expanded={createMenuOpen}
+                aria-haspopup="true"
+                className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                  createAccountActive
+                    ? 'bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_12px_rgba(0,0,0,0.2)]'
+                    : 'text-blue-100/55 hover:bg-white/8 hover:text-blue-50'
+                }`}
+              >
+                {createAccountActive && (
+                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-blue-300 shadow-[0_0_8px_rgba(147,197,253,0.8)]" />
+                )}
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
+                  createAccountActive
+                    ? 'bg-white/15 shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.2)] text-white'
+                    : 'text-blue-200/60 group-hover:text-blue-100'
+                }`}>
+                  <FiUserPlus size={16} aria-hidden="true" />
+                </span>
+                <span className="flex-1 text-left">Create account</span>
+                <FiChevronRight
+                  size={14}
+                  aria-hidden="true"
+                  className={`shrink-0 text-blue-200/50 transition-transform duration-200 ${createMenuOpen ? 'rotate-90' : ''}`}
+                />
+              </button>
+
+              {createMenuOpen && (
+                <div className="ml-4 mt-1 space-y-1 border-l border-white/10 pl-3">
+                  {createAccountLinks.map((sub) => {
+                    const subActive = pathname === sub.href;
+                    const SubIcon = sub.icon;
+                    return (
+                      <Link
+                        key={sub.href}
+                        href={sub.href}
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                          subActive
+                            ? 'bg-white/12 text-white'
+                            : 'text-blue-100/50 hover:bg-white/8 hover:text-blue-50'
+                        }`}
+                      >
+                        <SubIcon size={14} aria-hidden="true" />
+                        <span>{sub.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {links.map((link) => {
             const active = pathname === link.href;
             const Icon = link.icon;
@@ -151,6 +233,94 @@ export default function Sidebar({
               </Link>
             );
           })}
+
+          {showReportsMenu && (
+            <div
+              className="relative"
+              onMouseEnter={() => setReportsMenuOpen(true)}
+              onMouseLeave={() => setReportsMenuOpen(false)}
+            >
+              <button
+                type="button"
+                onClick={() => setReportsMenuOpen((v) => !v)}
+                aria-expanded={reportsMenuOpen}
+                aria-haspopup="true"
+                className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                  reportsActive
+                    ? 'bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_12px_rgba(0,0,0,0.2)]'
+                    : 'text-blue-100/55 hover:bg-white/8 hover:text-blue-50'
+                }`}
+              >
+                {reportsActive && (
+                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-blue-300 shadow-[0_0_8px_rgba(147,197,253,0.8)]" />
+                )}
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
+                  reportsActive
+                    ? 'bg-white/15 shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.2)] text-white'
+                    : 'text-blue-200/60 group-hover:text-blue-100'
+                }`}>
+                  <FiBarChart2 size={16} aria-hidden="true" />
+                </span>
+                <span className="flex-1 text-left">Reports</span>
+                <FiChevronRight
+                  size={14}
+                  aria-hidden="true"
+                  className={`shrink-0 text-blue-200/50 transition-transform duration-200 ${reportsMenuOpen ? 'rotate-90' : ''}`}
+                />
+              </button>
+
+              {reportsMenuOpen && (
+                <div className="ml-4 mt-1 space-y-1 border-l border-white/10 pl-3">
+                  {reportsLinks.map((sub) => {
+                    const subActive = pathname === sub.href;
+                    const SubIcon = sub.icon;
+                    return (
+                      <Link
+                        key={sub.href}
+                        href={sub.href}
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                          subActive
+                            ? 'bg-white/12 text-white'
+                            : 'text-blue-100/50 hover:bg-white/8 hover:text-blue-50'
+                        }`}
+                      >
+                        <SubIcon size={14} aria-hidden="true" />
+                        <span>{sub.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {(() => {
+            const active = pathname === settingsLink.href;
+            const Icon = settingsLink.icon;
+            return (
+              <Link
+                href={settingsLink.href}
+                aria-current={active ? 'page' : undefined}
+                className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                  active
+                    ? 'bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_12px_rgba(0,0,0,0.2)]'
+                    : 'text-blue-100/55 hover:bg-white/8 hover:text-blue-50'
+                }`}
+              >
+                {active && (
+                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-blue-300 shadow-[0_0_8px_rgba(147,197,253,0.8)]" />
+                )}
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
+                  active
+                    ? 'bg-white/15 shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.2)] text-white'
+                    : 'text-blue-200/60 group-hover:text-blue-100'
+                }`}>
+                  <Icon size={16} aria-hidden="true" />
+                </span>
+                <span>{settingsLink.label}</span>
+              </Link>
+            );
+          })()}
         </nav>
 
         {/* ── User card ── */}

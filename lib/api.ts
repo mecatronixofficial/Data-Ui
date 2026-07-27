@@ -33,6 +33,10 @@ export const api = {
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request('/auth/me'),
+  updateProfile: (payload: { name?: string; email?: string }) =>
+    request('/auth/me', { method: 'PUT', body: JSON.stringify(payload) }),
+  changePassword: (payload: { currentPassword: string; newPassword: string }) =>
+    request('/auth/me/password', { method: 'PUT', body: JSON.stringify(payload) }),
 
   createEntry: (payload: any) =>
     request('/entries', { method: 'POST', body: JSON.stringify(payload) }),
@@ -51,8 +55,12 @@ export const api = {
   listUsers: () => request('/users'),
   createUser: (payload: any) =>
     request('/users', { method: 'POST', body: JSON.stringify(payload) }),
-  updateUser: (id: string, payload: { password: string }) =>
+  updateAccountProfile: (id: string, payload: { name?: string; email?: string }) =>
     request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  resetAccountPassword: (id: string, password: string) =>
+    request(`/users/${id}/password`, { method: 'PUT', body: JSON.stringify({ password }) }),
+  setAccountStatus: (id: string, isActive: boolean) =>
+    request(`/users/${id}/status`, { method: 'PUT', body: JSON.stringify({ isActive }) }),
   deleteUser: (id: string) => request(`/users/${id}`, { method: 'DELETE' }),
 
   getReportSettings: () => request('/report-settings'),
@@ -61,12 +69,34 @@ export const api = {
 
   getFields: () => request('/fields'),
   getMyFields: () => request('/fields/mine'),
-  createField: (payload: { name: string; order?: number; boxNames: string[]; icon?: string; boxIcons?: string[] }) =>
+  createField: (payload: { name: string; order?: number; boxNames: string[]; icon?: string; boxIcons?: string[]; boxFields?: BoxFieldDef[][]; visibleUserIds?: string[] }) =>
     request('/fields', { method: 'POST', body: JSON.stringify(payload) }),
-  updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; calcType?: string; groupSplit?: number; icon?: string; boxIcons?: string[] }) =>
+  updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; calcType?: string; groupSplit?: number; icon?: string; boxIcons?: string[]; boxFields?: BoxFieldDef[][]; visibleUserIds?: string[] }) =>
     request(`/fields/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteField: (id: string) => request(`/fields/${id}`, { method: 'DELETE' }),
 };
+
+// One inner-field column of a box's detail table (see Field.boxFields on the backend).
+// 'auto' columns are computed client-side (row position, the logged-in user's name, or a
+// fixed value the superadmin sets once) instead of being typed in by whoever fills the box.
+// 'sumTotal' marks number column(s) that roll up into the box total. 'computed' columns
+// derive their value from two other columns in the same row (matched by label) via
+// `formula`, e.g. INR = USD x USD Rate, or Value = INR + INR x Bonus% / 100.
+export type BoxFieldDef = {
+  label: string;
+  type: 'text' | 'number' | 'date' | 'time' | 'computed';
+  auto?: 'serial' | 'user' | 'constant';
+  constant?: number;
+  sumTotal?: boolean;
+  formula?: { op: 'multiply' | 'percentAdd'; a: string; b: string };
+};
+
+// A single detail row entered inside a box: a bag of values keyed by that box's column labels.
+export type BoxDetail = Record<string, string | number>;
+
+export function blankBoxDetail(seedValue = 0): BoxDetail {
+  return { name: '', value: seedValue };
+}
 
 // Fixed set of account roles. There is no admin UI to manage these on purpose.
 export const ROLE_NAMES = ['user', 'admin', 'superadmin'] as const;
