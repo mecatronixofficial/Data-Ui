@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { FiPlus, FiTrash2, FiX } from 'react-icons/fi';
+import { FiLock, FiPlus, FiTrash2, FiX } from 'react-icons/fi';
 import { FieldIcon } from './IconPicker';
+import { boxColorHex } from './ColorPicker';
 import { type BoxDetail, type BoxFieldDef, blankBoxDetail } from '@/lib/api';
 
 export type { BoxDetail, BoxFieldDef };
@@ -43,10 +44,12 @@ export default function TallyBox(props: {
   index: number;
   name?: string;
   icon?: string;
+  color?: string;
   value: number;
   details?: BoxDetail[];
   boxFields?: BoxFieldDef[];
   currentUserName?: string;
+  locked?: boolean;
   onNameChange?: (name: string) => void;
   onDetailsChange?: (details: BoxDetail[]) => void;
   onChange: (v: number) => void;
@@ -58,10 +61,12 @@ export default function TallyBox(props: {
         index={props.index}
         name={props.name}
         icon={props.icon}
+        color={props.color}
         value={props.value}
         details={props.details}
         fields={props.boxFields!}
         currentUserName={props.currentUserName}
+        locked={props.locked}
         onDetailsChange={props.onDetailsChange}
         onChange={props.onChange}
       />
@@ -75,8 +80,10 @@ function LegacyTallyBox({
   index,
   name,
   icon,
+  color,
   value,
   details,
+  locked,
   onNameChange,
   onDetailsChange,
   onChange,
@@ -85,12 +92,15 @@ function LegacyTallyBox({
   index: number;
   name?: string;
   icon?: string;
+  color?: string;
   value: number;
   details?: BoxDetail[];
+  locked?: boolean;
   onNameChange?: (name: string) => void;
   onDetailsChange?: (details: BoxDetail[]) => void;
   onChange: (v: number) => void;
 }) {
+  const colorHex = boxColorHex(color);
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<DetailRow[]>(() =>
     details?.length
@@ -135,19 +145,26 @@ function LegacyTallyBox({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label={`${title}, click to edit`}
-        className="group relative w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2.5 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
+        aria-label={locked ? `${title}, view only` : `${title}, click to edit`}
+        className="group relative w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
       >
+        {locked && (
+          <span className="absolute right-1.5 top-1.5 text-blue-900/25"><FiLock size={11} /></span>
+        )}
         <span className="flex items-center justify-between gap-1.5">
-          <span className={value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-600'}>
-            <FieldIcon icon={icon} size={13} />
+          <span
+            className={colorHex ? undefined : value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-600'}
+            style={colorHex ? { color: colorHex } : undefined}
+          >
+            <FieldIcon icon={icon} size={11} />
           </span>
           <span className="truncate text-[9px] font-semibold uppercase tracking-wider text-blue-900/40">{title}</span>
         </span>
         <span
-          className={`mt-1 block font-mono text-base font-bold tabular-nums ${
-            value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-950'
+          className={`mt-1 block font-mono text-sm font-bold tabular-nums ${
+            colorHex ? '' : value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-950'
           }`}
+          style={colorHex ? { color: colorHex } : undefined}
         >
           {value}
         </span>
@@ -168,7 +185,7 @@ function LegacyTallyBox({
               <div>
                 <h3 id={`${idPrefix}-box-${index}-title`} className="font-display text-xl text-blue-950">{title}</h3>
                 <p className="text-xs text-blue-900/45">
-                  {onNameChange ? 'Customize the box name, then enter values below.' : 'Enter values below.'}
+                  {locked ? 'View only — someone else on this report enters these values.' : onNameChange ? 'Customize the box name, then enter values below.' : 'Enter values below.'}
                 </p>
               </div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Close popup" className="rounded-lg p-2 text-blue-900/45 hover:bg-blue-50 hover:text-blue-800">
@@ -189,6 +206,7 @@ function LegacyTallyBox({
                     id={`${idPrefix}-box-${index}-name`}
                     type="text"
                     value={name ?? ''}
+                    readOnly={locked}
                     onChange={(event) => onNameChange(event.target.value)}
                     placeholder={`Box ${index}`}
                     className="w-full rounded-lg border border-blue-100 bg-blue-50/40 px-3 py-2 text-sm font-semibold text-blue-950 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
@@ -198,7 +216,7 @@ function LegacyTallyBox({
               <div className="mb-2 flex gap-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-blue-900/45">
                 <span className="min-w-0 flex-1 truncate">Name</span>
                 <span className="w-24 shrink-0 truncate">Value</span>
-                <span className="w-9 shrink-0" />
+                {!locked && <span className="w-9 shrink-0" />}
               </div>
               <div className="space-y-2">
                 {rows.map((row, rowIndex) => (
@@ -206,33 +224,39 @@ function LegacyTallyBox({
                     <input
                       type="text"
                       value={String(row.name ?? '')}
+                      readOnly={locked}
                       onChange={(event) => updateRowName(row.id, event.target.value)}
                       placeholder="Name"
                       aria-label={`Row ${rowIndex + 1} name`}
-                      className="min-w-0 flex-1 rounded-lg border border-blue-100 bg-blue-50/40 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                      className={`min-w-0 flex-1 rounded-lg border border-blue-100 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'bg-blue-50/70 text-blue-900/60 cursor-default' : 'bg-blue-50/40'}`}
                     />
                     <div className="w-24 shrink-0">
                       <SignedNumberInput
                         value={Number(row.value) || 0}
                         onChange={(v) => updateRowValue(row.id, v)}
                         label={`Row ${rowIndex + 1} value`}
+                        readOnly={locked}
                       />
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeRow(row.id)}
-                      aria-label="Remove row"
-                      className="flex w-9 shrink-0 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600"
-                    >
-                      <FiTrash2 />
-                    </button>
+                    {!locked && (
+                      <button
+                        type="button"
+                        onClick={() => removeRow(row.id)}
+                        aria-label="Remove row"
+                        className="flex w-9 shrink-0 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <FiTrash2 />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
 
-              <button type="button" onClick={addRow} className="mt-3 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
-                <FiPlus /> Add another
-              </button>
+              {!locked && (
+                <button type="button" onClick={addRow} className="mt-3 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
+                  <FiPlus /> Add another
+                </button>
+              )}
             </div>
 
             <div className="flex items-center justify-between border-t border-blue-100 bg-blue-50/60 px-5 py-4">
@@ -257,7 +281,10 @@ function customRowValue(row: Record<string, unknown>, fields: BoxFieldDef[]) {
   const numberFields = fields.filter((f) => f.type === 'number' || f.type === 'computed');
   const flagged = numberFields.filter((f) => f.sumTotal);
   const counted = flagged.length ? flagged : numberFields;
-  return counted.reduce((sum, f) => sum + (Number(row[f.label]) || 0), 0);
+  return counted.reduce((sum, f) => {
+    const sign = f.sumSign === 'subtract' ? -1 : 1;
+    return sum + sign * (Number(row[f.label]) || 0);
+  }, 0);
 }
 
 // Fills in every 'computed' column from its formula's two source columns (matched by label).
@@ -290,10 +317,12 @@ function CustomTallyBox({
   index,
   name,
   icon,
+  color,
   value,
   details,
   fields,
   currentUserName,
+  locked,
   onDetailsChange,
   onChange,
 }: {
@@ -301,13 +330,16 @@ function CustomTallyBox({
   index: number;
   name?: string;
   icon?: string;
+  color?: string;
   value: number;
   details?: BoxDetail[];
   fields: BoxFieldDef[];
   currentUserName?: string;
+  locked?: boolean;
   onDetailsChange?: (details: BoxDetail[]) => void;
   onChange: (v: number) => void;
 }) {
+  const colorHex = boxColorHex(color);
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<DetailRow[]>(() =>
     details?.length
@@ -348,19 +380,26 @@ function CustomTallyBox({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label={`${title}, click to edit`}
-        className="group relative w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2.5 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
+        aria-label={locked ? `${title}, view only` : `${title}, click to edit`}
+        className="group relative w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
       >
+        {locked && (
+          <span className="absolute right-1.5 top-1.5 text-blue-900/25"><FiLock size={11} /></span>
+        )}
         <span className="flex items-center justify-between gap-1.5">
-          <span className={value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-600'}>
-            <FieldIcon icon={icon} size={13} />
+          <span
+            className={colorHex ? undefined : value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-600'}
+            style={colorHex ? { color: colorHex } : undefined}
+          >
+            <FieldIcon icon={icon} size={11} />
           </span>
-          <span className="truncate text-[9px] font-semibold uppercase tracking-wider text-blue-900/40">{title}</span>
+          <span className="truncate text-[9px] font-semibold uppercase tracking-wider text-black">{title}</span>
         </span>
         <span
-          className={`mt-1 block font-mono text-base font-bold tabular-nums ${
-            value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-950'
+          className={`mt-1 block font-mono text-sm font-bold tabular-nums ${
+            colorHex ? '' : value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-950'
           }`}
+          style={colorHex ? { color: colorHex } : undefined}
         >
           {value}
         </span>
@@ -380,7 +419,7 @@ function CustomTallyBox({
             <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
               <div>
                 <h3 id={`${idPrefix}-box-${index}-title`} className="font-display text-xl text-blue-950">{title}</h3>
-                <p className="text-xs text-blue-900/45">Add a row for each record, then enter values below.</p>
+                <p className="text-xs text-blue-900/45">{locked ? 'View only — someone else on this report enters these values.' : 'Add a row for each record, then enter values below.'}</p>
               </div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Close popup" className="rounded-lg p-2 text-blue-900/45 hover:bg-blue-50 hover:text-blue-800">
                 <FiX size={20} />
@@ -399,7 +438,7 @@ function CustomTallyBox({
                         )}
                       </th>
                     ))}
-                    <th className="w-9" />
+                    {!locked && <th className="w-9" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -431,54 +470,62 @@ function CustomTallyBox({
                                 value={Number(row[field.label]) || 0}
                                 onChange={(v) => updateCell(row.id, field.label, v)}
                                 label={`Row ${rowIndex + 1} ${field.label}`}
+                                readOnly={locked}
                               />
                             </div>
                           ) : field.type === 'date' ? (
                             <input
                               type="date"
                               value={String(row[field.label] ?? '')}
-                              onChange={(event) => updateCell(row.id, field.label, event.target.value)}
+                              readOnly={locked}
+                              onChange={(event) => !locked && updateCell(row.id, field.label, event.target.value)}
                               aria-label={`Row ${rowIndex + 1} ${field.label}`}
-                              className="min-w-[9.5rem] rounded-lg border border-blue-100 bg-blue-50/40 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                              className={`min-w-[9.5rem] rounded-lg border border-blue-100 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'bg-blue-50/70 text-blue-900/60 cursor-default' : 'bg-blue-50/40'}`}
                             />
                           ) : field.type === 'time' ? (
                             <input
                               type="time"
                               value={String(row[field.label] ?? '')}
-                              onChange={(event) => updateCell(row.id, field.label, event.target.value)}
+                              readOnly={locked}
+                              onChange={(event) => !locked && updateCell(row.id, field.label, event.target.value)}
                               aria-label={`Row ${rowIndex + 1} ${field.label}`}
-                              className="min-w-[7rem] rounded-lg border border-blue-100 bg-blue-50/40 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                              className={`min-w-[7rem] rounded-lg border border-blue-100 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'bg-blue-50/70 text-blue-900/60 cursor-default' : 'bg-blue-50/40'}`}
                             />
                           ) : (
                             <input
                               type="text"
                               value={String(row[field.label] ?? '')}
-                              onChange={(event) => updateCell(row.id, field.label, event.target.value)}
+                              readOnly={locked}
+                              onChange={(event) => !locked && updateCell(row.id, field.label, event.target.value)}
                               placeholder={field.label}
                               aria-label={`Row ${rowIndex + 1} ${field.label}`}
-                              className="min-w-[8rem] rounded-lg border border-blue-100 bg-blue-50/40 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                              className={`min-w-[8rem] rounded-lg border border-blue-100 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'bg-blue-50/70 text-blue-900/60 cursor-default' : 'bg-blue-50/40'}`}
                             />
                           )}
                         </td>
                       ))}
-                      <td className="px-1.5">
-                        <button
-                          type="button"
-                          onClick={() => removeRow(row.id)}
-                          aria-label="Remove row"
-                          className="flex h-9 w-9 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600"
-                        >
-                          <FiTrash2 />
-                        </button>
-                      </td>
+                      {!locked && (
+                        <td className="px-1.5">
+                          <button
+                            type="button"
+                            onClick={() => removeRow(row.id)}
+                            aria-label="Remove row"
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              <button type="button" onClick={addRow} className="mt-3 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
-                <FiPlus /> Add another
-              </button>
+              {!locked && (
+                <button type="button" onClick={addRow} className="mt-3 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
+                  <FiPlus /> Add another
+                </button>
+              )}
             </div>
 
             <div className="flex items-center justify-between border-t border-blue-100 bg-blue-50/60 px-5 py-4">
@@ -497,7 +544,7 @@ function CustomTallyBox({
   );
 }
 
-function SignedNumberInput({ value, onChange, label }: { value: number; onChange: (value: number) => void; label: string }) {
+function SignedNumberInput({ value, onChange, label, readOnly }: { value: number; onChange: (value: number) => void; label: string; readOnly?: boolean }) {
   const [text, setText] = useState(value === 0 ? '' : String(value));
 
   useEffect(() => setText(value === 0 ? '' : String(value)), [value]);
@@ -507,7 +554,9 @@ function SignedNumberInput({ value, onChange, label }: { value: number; onChange
       type="text"
       inputMode="decimal"
       value={text}
+      readOnly={readOnly}
       onChange={(event) => {
+        if (readOnly) return;
         const next = event.target.value;
         if (!/^-?\d*(\.\d*)?$/.test(next)) return;
         setText(next);
@@ -522,7 +571,7 @@ function SignedNumberInput({ value, onChange, label }: { value: number; onChange
       }}
       placeholder="0"
       aria-label={label}
-      className="w-full min-w-0 rounded-lg border border-blue-100 bg-blue-50/40 px-3 py-2 text-right font-mono text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+      className={`w-full min-w-0 rounded-lg border border-blue-100 px-3 py-2 text-right font-mono text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${readOnly ? 'bg-blue-50/70 text-blue-900/60 cursor-default' : 'bg-blue-50/40'}`}
     />
   );
 }

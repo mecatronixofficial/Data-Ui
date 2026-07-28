@@ -69,11 +69,16 @@ export const api = {
 
   getFields: () => request('/fields'),
   getMyFields: () => request('/fields/mine'),
-  createField: (payload: { name: string; order?: number; boxNames: string[]; icon?: string; boxIcons?: string[]; boxFields?: BoxFieldDef[][]; visibleUserIds?: string[] }) =>
+  getFieldEditLocks: (): Promise<{ name: string; userOnlyEdit: boolean }[]> => request('/fields/edit-locks'),
+  createField: (payload: { name: string; order?: number; boxNames: string[]; icon?: string; boxIcons?: string[]; boxColors?: string[]; boxFields?: BoxFieldDef[][]; visibleUserIds?: string[]; userOnlyEdit?: boolean }) =>
     request('/fields', { method: 'POST', body: JSON.stringify(payload) }),
-  updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; calcType?: string; groupSplit?: number; icon?: string; boxIcons?: string[]; boxFields?: BoxFieldDef[][]; visibleUserIds?: string[] }) =>
+  updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; calcType?: string; groupSplit?: number; icon?: string; boxIcons?: string[]; boxColors?: string[]; boxFields?: BoxFieldDef[][]; visibleUserIds?: string[]; userOnlyEdit?: boolean }) =>
     request(`/fields/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteField: (id: string) => request(`/fields/${id}`, { method: 'DELETE' }),
+
+  getFinalTotalSettings: (): Promise<{ label: string; icon: string; sign: FinalTotalSign }> => request('/fields/final-total-settings'),
+  updateFinalTotalSettings: (payload: { label: string; icon?: string; sign?: FinalTotalSign }) =>
+    request('/fields/final-total-settings', { method: 'PUT', body: JSON.stringify(payload) }),
 };
 
 // One inner-field column of a box's detail table (see Field.boxFields on the backend).
@@ -88,11 +93,19 @@ export type BoxFieldDef = {
   auto?: 'serial' | 'user' | 'constant';
   constant?: number;
   sumTotal?: boolean;
+  // Only meaningful when sumTotal is set: 'subtract' rolls this column into the box
+  // total as a negative (e.g. an "In" column that should reduce an "Out" total).
+  // Defaults to 'add' when omitted.
+  sumSign?: 'add' | 'subtract';
   formula?: { op: 'multiply' | 'percentAdd'; a: string; b: string };
 };
 
 // A single detail row entered inside a box: a bag of values keyed by that box's column labels.
 export type BoxDetail = Record<string, string | number>;
+
+// Whether the overall Final Total is shown/stored as a positive or negative value —
+// a single global toggle set on the Fields page (see FinalTotalSettings.sign on the backend).
+export type FinalTotalSign = 'add' | 'subtract';
 
 export function blankBoxDetail(seedValue = 0): BoxDetail {
   return { name: '', value: seedValue };
@@ -100,6 +113,15 @@ export function blankBoxDetail(seedValue = 0): BoxDetail {
 
 // Fixed set of account roles. There is no admin UI to manage these on purpose.
 export const ROLE_NAMES = ['user', 'admin', 'superadmin'] as const;
+
+// Whether the current viewer may edit a field's values, given Field.userOnlyEdit:
+// fields marked userOnlyEdit are locked to admins (view only); everything else is
+// locked to users. Superadmin is never locked.
+export function computeFieldLocked(role: string, userOnlyEdit: boolean) {
+  if (role === 'admin') return userOnlyEdit;
+  if (role === 'user') return !userOnlyEdit;
+  return false;
+}
 
 export function exportUrl(params: { name?: string; startDate?: string; endDate?: string }, format: 'xlsx' | 'pdf' = 'xlsx') {
   const qs = new URLSearchParams(

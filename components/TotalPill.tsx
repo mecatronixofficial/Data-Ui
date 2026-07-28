@@ -33,7 +33,7 @@ export default function TotalPill({
   return (
     <div className="flex flex-col items-center">
       <span
-        className={`rounded-lg px-2 py-1 font-mono text-sm tabular ${signStyle || defaultStyle}`}
+        className={`rounded-lg px-1.5 py-0.5 font-mono text-xs tabular ${signStyle || defaultStyle}`}
       >
         {value}
       </span>
