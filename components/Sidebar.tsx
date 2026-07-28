@@ -44,6 +44,7 @@ export default function Sidebar({
     { href: '/dashboard/fields', label: 'Fields', icon: FiTag, show: permissions?.manageFields || role === 'superadmin' },
   ].filter((link) => link.show);
   const settingsLink = { href: '/dashboard/settings', label: 'Settings', icon: FiSettings };
+  const showSettings = role === 'superadmin';
 
   const createAccountLinks = [
     { href: '/dashboard/admins', label: 'Admin', icon: FiShield },
@@ -294,7 +295,7 @@ export default function Sidebar({
             </div>
           )}
 
-          {(() => {
+          {showSettings && (() => {
             const active = pathname === settingsLink.href;
             const Icon = settingsLink.icon;
             return (

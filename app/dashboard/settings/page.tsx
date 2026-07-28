@@ -26,12 +26,16 @@ export default function SettingsPage() {
   useEffect(() => {
     api.me()
       .then((user) => {
+        if (user?.role !== 'superadmin') {
+          router.replace('/dashboard');
+          return;
+        }
         setName(user?.name || '');
         setEmail(user?.email || '');
         setRole(user?.role || '');
+        setLoading(false);
       })
-      .catch(() => router.replace('/login'))
-      .finally(() => setLoading(false));
+      .catch(() => router.replace('/login'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 

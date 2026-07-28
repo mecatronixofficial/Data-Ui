@@ -2,17 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiAlertCircle, FiCheckCircle, FiEdit2, FiKey, FiPower, FiTrash2, FiUserPlus, FiUsers } from 'react-icons/fi';
+import { FiAlertCircle, FiCheckCircle, FiChevronDown, FiChevronRight, FiEdit2, FiKey, FiPower, FiTrash2, FiUserPlus, FiUsers } from 'react-icons/fi';
 import { api } from '@/lib/api';
 import EditAccountModal from '@/components/EditAccountModal';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 
-type AdminRow = { _id: string; name: string; email: string; role: string; isActive?: boolean };
+type AdminRow = { _id: string; name: string; email: string; role: string; assignedAdminId?: string | null; isActive?: boolean };
 
 export default function AdminsPage() {
   const router = useRouter();
   const [admins, setAdmins] = useState<AdminRow[]>([]);
+  const [users, setUsers] = useState<AdminRow[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,6 +32,7 @@ export default function AdminsPage() {
     try {
       const all: AdminRow[] = await api.listUsers();
       setAdmins(all.filter((u) => u.role === 'admin'));
+      setUsers(all.filter((u) => u.role === 'user'));
     } catch (err: any) {
       setError(err.message || 'Could not load admins');
     } finally {
@@ -161,17 +164,18 @@ export default function AdminsPage() {
           <h2 className="font-display text-xl text-blue-950">All admins</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-blue-100 bg-blue-50/60 text-left text-xs uppercase tracking-wider text-blue-900/55">
                 <th className="px-5 py-3 font-medium">Name</th>
                 <th className="px-5 py-3 font-medium">Email</th>
+                <th className="px-5 py-3 font-medium">Assigned users</th>
                 <th className="px-5 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={3} className="px-5 py-10 text-center">
+                <tr><td colSpan={4} className="px-5 py-10 text-center">
                   <div className="flex items-center justify-center gap-2 text-blue-900/40">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-500" />
                     <span className="font-mono text-xs">loading…</span>
@@ -179,12 +183,30 @@ export default function AdminsPage() {
                 </td></tr>
               )}
               {!loading && admins.length === 0 && (
-                <tr><td colSpan={3} className="px-5 py-10 text-center text-sm text-blue-900/40">No admins yet.</td></tr>
+                <tr><td colSpan={4} className="px-5 py-10 text-center text-sm text-blue-900/40">No admins yet.</td></tr>
               )}
-              {!loading && admins.map((a) => (
+              {!loading && admins.map((a) => {
+                const teamMembers = users.filter((u) => u.assignedAdminId === a._id);
+                const isExpanded = expandedId === a._id;
+                return (
+                <>
                 <tr key={a._id} className="border-b border-blue-50 transition last:border-0 hover:bg-blue-50/40">
                   <td className="px-5 py-4 font-medium text-blue-950">{a.name}</td>
                   <td className="px-5 py-3 text-blue-900/60">{a.email}</td>
+                  <td className="px-5 py-3">
+                    <button
+                      onClick={() => teamMembers.length > 0 && setExpandedId(isExpanded ? null : a._id)}
+                      disabled={teamMembers.length === 0}
+                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${
+                        teamMembers.length > 0
+                          ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                          : 'text-blue-900/35'
+                      }`}
+                    >
+                      {teamMembers.length > 0 && (isExpanded ? <FiChevronDown size={13} /> : <FiChevronRight size={13} />)}
+                      {teamMembers.length} {teamMembers.length === 1 ? 'user' : 'users'}
+                    </button>
+                  </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center justify-end gap-1">
                       <button
@@ -224,7 +246,29 @@ export default function AdminsPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                {isExpanded && teamMembers.length > 0 && (
+                  <tr key={`${a._id}-team`} className="border-b border-blue-50 bg-blue-50/30 last:border-0">
+                    <td colSpan={4} className="px-5 py-3">
+                      <div className="flex flex-wrap gap-2 pl-1">
+                        {teamMembers.map((u) => (
+                          <span key={u._id}
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium ${
+                              u.isActive === false
+                                ? 'border-red-100 bg-red-50 text-red-600'
+                                : 'border-blue-100 bg-white text-blue-900/70'
+                            }`}
+                          >
+                            {u.name}
+                            <span className="text-blue-900/40">{u.email}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </>
+                );
+              })}
             </tbody>
           </table>
         </div>
