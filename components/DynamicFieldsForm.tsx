@@ -59,66 +59,52 @@ export default function DynamicFieldsForm({
 
   return (
     <>
-      {fields.map((field, fieldIndex) => {
-        const groupA = sum(field.boxes.slice(0, field.groupSplit));
-        const groupB = sum(field.boxes.slice(field.groupSplit));
-        const positiveTotal = sum(field.boxes.filter((v) => v > 0));
-        const negativeTotal = sum(field.boxes.filter((v) => v < 0));
+      <div className="grid items-stretch gap-4 lg:grid-cols-2">
+        {fields.map((field, fieldIndex) => {
+          const groupA = sum(field.boxes.slice(0, field.groupSplit));
+          const groupB = sum(field.boxes.slice(field.groupSplit));
+          const positiveTotal = sum(field.boxes.filter((v) => v > 0));
+          const negativeTotal = sum(field.boxes.filter((v) => v < 0));
 
-        return (
-          <section
-            key={field.name}
-            className="py-2"
-          >
-            <div className="py-1 flex flex-row items-center justify-between">
-              <div className="mb-1 flex items-center gap-1.5">
-                <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-blue-600 font-display text-[10px] text-white shadow-md shadow-blue-900/15">
-                  {field.icon ? <FieldIcon icon={field.icon} size={10} /> : String(fieldIndex + 1).padStart(2, '0')}
+          return (
+            <section
+              key={field.name}
+              className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_8px_28px_rgba(7,39,71,0.06)]"
+            >
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-gradient-to-r from-blue-500 via-blue-300 to-transparent" />
+            <div className="flex flex-col gap-3 border-b border-blue-100 bg-blue-50/25 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 font-display text-xs text-blue-700">
+                  {field.icon ? <FieldIcon icon={field.icon} size={16} /> : String(fieldIndex + 1).padStart(2, '0')}
                 </span>
-                <div>
-                  <h2 className="font-display text-sm text-blue-950 inline-flex items-center gap-1.5">
+                <div className="min-w-0">
+                  <p className="text-[7px] font-semibold uppercase tracking-[0.18em] text-blue-600/45">
+                    Field {String(fieldIndex + 1).padStart(2, '0')}
+                  </p>
+                  <h2 className="mt-0.5 inline-flex items-center gap-2 truncate font-display text-base font-semibold text-blue-950">
                     {field.name}
                     {field.locked && (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-blue-900/50">
-                        <FiLock size={8} /> View only
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-blue-900/45">
+                        <FiLock size={9} /> View only
                       </span>
                     )}
                   </h2>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {field.calcType === 'grouped' ? (
-                  <div className="flex flex-wrap items-end justify-center gap-2 py-2">
-                    <TotalPill label={`Group A (1–${field.groupSplit})`} value={groupA} />
-                    <span className="pb-1 font-display text-sm text-blue-700"></span>
-                    <TotalPill label={`Group B (${field.groupSplit + 1}–${field.boxes.length})`} value={groupB} />
-                    <span className="text-blue-900/30 font-display text-sm pb-1">=</span>
-                    <TotalPill label={`${field.name} Total`} value={fieldTotal(field)} emphasize colorBySign />
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap items-end justify-center gap-2 py-2">
-                    <TotalPill label="Positive total" value={positiveTotal} colorBySign />
-                    <span className="pb-1 font-display text-sm text-blue-700"></span>
-                    <TotalPill label="Negative total" value={negativeTotal} colorBySign />
-                    <span className="text-blue-900/30 font-display text-sm pb-1">=</span>
-                    <TotalPill label={`${field.name} Total`} value={fieldTotal(field)} emphasize colorBySign />
-                  </div>
-                )}
-                {canReset && !field.locked && (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmIndex(fieldIndex)}
-                    aria-label={`Reset ${field.name} values`}
-                    title="Reset field values"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-blue-900/40 transition hover:bg-amber-50 hover:text-amber-600"
-                  >
-                    <FiRefreshCw size={15} />
-                  </button>
-                )}
-              </div>
+              {canReset && !field.locked && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmIndex(fieldIndex)}
+                  aria-label={`Reset ${field.name} values`}
+                  title="Reset field values"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center self-end rounded-lg border border-transparent text-blue-900/35 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600 sm:self-auto"
+                >
+                  <FiRefreshCw size={15} />
+                </button>
+              )}
             </div>
 
-            <div className="mb-2 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
+            <div className="grid flex-1 grid-cols-2 content-start gap-2 bg-white p-3 sm:grid-cols-3 xl:grid-cols-4">
               {field.boxes.map((val, boxIndex) => (
                 <TallyBox
                   idPrefix={`field-${fieldIndex}`}
@@ -138,9 +124,27 @@ export default function DynamicFieldsForm({
               ))}
             </div>
 
-          </section>
-        );
-      })}
+            <div className="flex items-center justify-end overflow-x-auto border-t border-blue-100 bg-blue-50/40 px-3 py-2 sm:px-4">
+              {field.calcType === 'grouped' ? (
+                <div className="flex shrink-0 items-center gap-2">
+                  <TotalPill label="" value={groupA} />
+                  <TotalPill label="" value={groupB} />
+                  <span className="font-display text-sm text-blue-900/20">=</span>
+                  <TotalPill label="" value={fieldTotal(field)} emphasize colorBySign />
+                </div>
+              ) : (
+                <div className="flex shrink-0 items-center gap-2">
+                  <TotalPill label="" value={positiveTotal} colorBySign />
+                  <TotalPill label="" value={negativeTotal} colorBySign />
+                  <span className="font-display text-sm text-blue-900/20">=</span>
+                  <TotalPill label="" value={fieldTotal(field)} emphasize colorBySign />
+                </div>
+              )}
+            </div>
+            </section>
+          );
+        })}
+      </div>
 
       {confirmIndex !== null && (
         <div
@@ -222,35 +226,43 @@ export function FinalTotalCard({
   const single = fields.length <= 1;
 
   return (
-    <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-950 via-blue-800 to-blue-600 p-4 text-white shadow-[0_20px_50px_rgba(0,107,196,0.25)]">
-      <div className="absolute -right-12 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
-      <div className="relative flex flex-nowrap items-center gap-2 overflow-x-auto">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/15 font-display text-sm text-white">
-          {icon ? <FieldIcon icon={icon} size={14} /> : String(fields.length + 1).padStart(2, '0')}
-        </span>
-        <h2 className="shrink-0 font-display text-base">{label}</h2>
+    <section className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-3 shadow-[0_8px_28px_rgba(7,39,71,0.07)]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-blue-500 via-blue-300 to-transparent" />
+
+      <div className="relative flex flex-col gap-3 xl:grid xl:grid-cols-[13rem_minmax(0,1fr)_auto] xl:items-center">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 font-display text-xs text-blue-700">
+            {icon ? <FieldIcon icon={icon} size={15} /> : String(fields.length + 1).padStart(2, '0')}
+          </span>
+          <div className="min-w-0">
+            <p className="text-[8px] font-semibold uppercase tracking-[0.18em] text-blue-600/45">Summary</p>
+            <h2 className="truncate font-display text-base font-semibold text-blue-950">{label}</h2>
+          </div>
+        </div>
 
         {!single && (
-          <>
-            <span className="shrink-0 text-blue-50/40">·</span>
+          <div className="scrollbar-hide flex max-w-full gap-2 overflow-x-auto xl:justify-end">
             {fields.map((field, index) => (
-              <span key={index} className="flex shrink-0 items-center gap-2">
-                <TotalPill label={`${field.name} Total`} value={fieldTotal(field)} dark colorBySign />
-                {index < fields.length - 1 && (
-                  <span className="font-display text-sm text-blue-50/70"></span>
-                )}
-              </span>
+              <TotalPill key={index} label="" value={fieldTotal(field)} colorBySign />
             ))}
-          </>
+          </div>
         )}
 
-        <span className="shrink-0 font-display text-sm text-blue-50/70">=</span>
-        <span
-          className={`shrink-0 font-mono text-2xl font-semibold tabular ${finalTotal < 0 ? 'text-red-300' : finalTotal > 0 ? 'text-blue-200' : 'text-white'
+        <div className={`flex shrink-0 items-center justify-between gap-4 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2 sm:min-w-[11rem] ${
+          single ? 'xl:col-start-3' : ''
+        }`}>
+          <div>
+            <p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-blue-900/35">Main total</p>
+            <p className="mt-0.5 text-xs text-blue-900/45">All values</p>
+          </div>
+          <span
+            className={`font-mono text-2xl font-semibold tracking-tight tabular ${
+              finalTotal < 0 ? 'text-red-600' : finalTotal > 0 ? 'text-blue-700' : 'text-blue-950'
             }`}
-        >
-          {finalTotal}
-        </span>
+          >
+            {finalTotal}
+          </span>
+        </div>
       </div>
     </section>
   );
