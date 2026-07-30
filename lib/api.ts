@@ -103,8 +103,7 @@ export type BoxFieldDef = {
 // A single detail row entered inside a box: a bag of values keyed by that box's column labels.
 export type BoxDetail = Record<string, string | number>;
 
-// Whether the overall Final Total is shown/stored as a positive or negative value —
-// a single global toggle set on the Fields page (see FinalTotalSettings.sign on the backend).
+// The operator used between field totals is a single global setting managed on the Fields page.
 export type FinalTotalSign = 'add' | 'subtract';
 
 export function blankBoxDetail(seedValue = 0): BoxDetail {
