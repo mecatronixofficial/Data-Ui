@@ -384,7 +384,7 @@ export default function FieldsPage() {
 
       <section className="rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
         <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-blue-900/55">Final Total card</p>
-        <p className="mb-4 text-xs text-blue-900/45">Change the text, icon and sign shown for the overall Final Total on the entry page and Reports table.</p>
+        <p className="mb-4 text-xs text-blue-900/45">Change the text, icon and operator used to combine field totals on the entry page and Reports table.</p>
         <div className="flex flex-wrap items-end gap-3">
           <IconPicker value={finalTotalIcon} onChange={setFinalTotalIconState} disabled={!canEdit} />
           <input
@@ -399,7 +399,7 @@ export default function FieldsPage() {
               type="button"
               disabled={!canEdit}
               onClick={() => canEdit && setFinalTotalSignState('add')}
-              title="Show the Final Total as a positive value"
+              title="Add the field totals"
               className={`rounded border px-3 py-1.5 text-xs font-medium transition ${finalTotalSign !== 'subtract' ? 'border-emerald-400 bg-emerald-600 text-white' : 'border-blue-200 bg-white text-blue-800'} ${canEdit ? 'hover:bg-blue-50' : 'cursor-default opacity-80'}`}
             >
               Add (+)
@@ -408,7 +408,7 @@ export default function FieldsPage() {
               type="button"
               disabled={!canEdit}
               onClick={() => canEdit && setFinalTotalSignState('subtract')}
-              title="Show the Final Total as a negative value"
+              title="Subtract each following field total from the first"
               className={`rounded border px-3 py-1.5 text-xs font-medium transition ${finalTotalSign === 'subtract' ? 'border-red-400 bg-red-600 text-white' : 'border-blue-200 bg-white text-blue-800'} ${canEdit ? 'hover:bg-blue-50' : 'cursor-default opacity-80'}`}
             >
               Subtract (−)

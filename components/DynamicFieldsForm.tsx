@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { FiAlertCircle, FiLock, FiRefreshCw, FiX } from 'react-icons/fi';
 import TallyBox, { type BoxDetail, type BoxFieldDef } from './TallyBox';
 import { type Operator } from './OperatorToggle';
@@ -74,14 +74,13 @@ export default function DynamicFieldsForm({
             <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-gradient-to-r from-blue-500 via-blue-300 to-transparent" />
             <div className="flex flex-col gap-3 border-b border-blue-100 bg-blue-50/25 p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 font-display text-xs text-blue-700">
-                  {field.icon ? <FieldIcon icon={field.icon} size={16} /> : String(fieldIndex + 1).padStart(2, '0')}
-                </span>
+                {field.icon && (
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 font-display text-xs text-blue-700">
+                    <FieldIcon icon={field.icon} size={16} />
+                  </span>
+                )}
                 <div className="min-w-0">
-                  <p className="text-[7px] font-semibold uppercase tracking-[0.18em] text-blue-600/45">
-                    Field {String(fieldIndex + 1).padStart(2, '0')}
-                  </p>
-                  <h2 className="mt-0.5 inline-flex items-center gap-2 truncate font-display text-base font-semibold text-blue-950">
+                  <h2 className="inline-flex items-center gap-2 truncate font-display text-base font-semibold text-blue-950">
                     {field.name}
                     {field.locked && (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-blue-900/45">
@@ -204,11 +203,13 @@ export default function DynamicFieldsForm({
   );
 }
 
-// Plain sum of every field's total, then the single global sign (superadmin-set on
-// the Fields page, see FinalTotalSettings.sign) flips the whole thing if 'subtract'.
+// Combine every field total using the single operator selected by the superadmin.
+// The first field is the starting value; each following field is added or subtracted.
 export function combinedFinalTotal(fields: FieldValue[], sign?: FinalTotalSign) {
-  const rawTotal = sum(fields.map(fieldTotal));
-  return sign === 'subtract' ? -rawTotal : rawTotal;
+  const totals = fields.map(fieldTotal);
+  if (totals.length === 0) return 0;
+  const multiplier = sign === 'subtract' ? -1 : 1;
+  return totals.slice(1).reduce((total, value) => total + multiplier * value, totals[0]);
 }
 
 export function FinalTotalCard({
@@ -241,9 +242,18 @@ export function FinalTotalCard({
         </div>
 
         {!single && (
-          <div className="scrollbar-hide flex max-w-full gap-2 overflow-x-auto xl:justify-end">
+          <div className="scrollbar-hide flex max-w-full items-center gap-2 overflow-x-auto xl:justify-end">
             {fields.map((field, index) => (
-              <TotalPill key={index} label="" value={fieldTotal(field)} colorBySign />
+              <Fragment key={field.name || index}>
+                {index > 0 && (
+                  <span className={`shrink-0 font-display text-base font-semibold ${
+                    sign === 'subtract' ? 'text-red-500' : 'text-emerald-600'
+                  }`}>
+                    {sign === 'subtract' ? '−' : '+'}
+                  </span>
+                )}
+                <TotalPill label="" value={fieldTotal(field)} colorBySign />
+              </Fragment>
             ))}
           </div>
         )}
