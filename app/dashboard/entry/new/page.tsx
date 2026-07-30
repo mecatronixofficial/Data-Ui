@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { BsAlarm } from 'react-icons/bs';
-import { FiAlertCircle, FiCalendar, FiCheck, FiEdit3, FiRefreshCw, FiUser, FiX } from 'react-icons/fi';
+import { FiAlertCircle, FiCalendar, FiCheck, FiClock, FiRefreshCw, FiUser, FiX } from 'react-icons/fi';
 import { type BoxDetail } from '@/components/TallyBox';
 import { type Operator } from '@/components/OperatorToggle';
 import DynamicFieldsForm, { FinalTotalCard, type FieldValue } from '@/components/DynamicFieldsForm';
@@ -174,7 +173,7 @@ export default function NewEntryPage() {
         setFinalTotalIcon(settings.icon);
         setFinalTotalSign(settings.sign);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   function updateBox(fieldIndex: number, boxIndex: number, value: number) {
@@ -276,174 +275,192 @@ export default function NewEntryPage() {
 
   if (loadingEntry) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
-          <p className="text-xs font-semibold uppercase tracking-widest text-blue-900/40">Loading…</p>
+      <div className="flex min-h-[65vh] items-center justify-center">
+        <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-white px-12 py-10 text-center shadow-[0_24px_70px_rgba(7,39,71,0.12)]">
+          <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-blue-200/40 blur-3xl" />
+          <div className="relative mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-950 shadow-[0_12px_30px_rgba(7,39,71,0.25)]">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/25 border-t-white" />
+          </div>
+          <p className="font-display text-lg font-semibold text-blue-950">Preparing your workspace</p>
+          <p className="mt-1 text-xs text-blue-900/45">Loading fields and saved values...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3 pb-4">
+      <header className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-2 shadow-[0_8px_28px_rgba(7,39,71,0.07)]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-blue-300 to-transparent" />
+        <div className="grid gap-2 lg:grid-cols-[minmax(16rem,1fr)_auto_auto] lg:items-stretch">
+          <label className="group relative flex min-w-0 items-center gap-2.5 rounded-xl border border-blue-100 bg-blue-50/35 px-3 py-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+              <FiUser size={15} aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[7px] font-semibold uppercase tracking-[0.17em] text-blue-900/40">Record name</span>
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Enter a record name"
+                className="mt-0.5 w-full border-0 bg-transparent p-0 text-sm font-semibold text-blue-950 outline-none placeholder:font-normal placeholder:text-blue-900/25"
+              />
+            </span>
+          </label>
 
-      {/* ── Page header ── */}
-      <div className="relative overflow-hidden rounded-xl border border-blue-100 bg-gradient-to-br from-white via-blue-50/40 to-white p-2.5 shadow-[0_2px_10px_rgba(0,107,196,0.06)]">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/70 to-transparent" />
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-[0_4px_12px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)]">
-              <FiEdit3 size={12} aria-hidden="true" />
+          <div className="relative inline-flex items-stretch rounded-xl border border-blue-100 bg-white p-1">
+            <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-blue-950">
+              <FiClock size={14} className="text-blue-600" aria-hidden="true" />
+              <span>
+                <span className="block text-[6px] font-semibold uppercase tracking-[0.16em] text-blue-900/35">Time</span>
+                <span className="block font-mono text-xs font-semibold leading-tight">
+                  {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </span>
             </div>
-            <div>
-              <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-blue-600/70">
-                {isEditing ? 'Admin action' : 'New record'}
-              </p>
-              <h1 className="font-display text-sm text-blue-950 sm:text-base">
-                {isEditing ? 'Edit Entry' : 'Data Entry'}
-              </h1>
-            </div>
-          </div>
-
-          {/* Date + live time */}
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-1.5 rounded-lg border border-blue-100 bg-white px-2 py-1 shadow-[0_2px_8px_rgba(0,107,196,0.06)]">
-              <BsAlarm className="h-3.5 w-3.5 text-blue-500" />
-              <p className="font-display text-xs font-semibold tracking-wide text-blue-950">
-                {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5 rounded-lg border border-blue-100 bg-white px-2 py-1 shadow-[0_2px_8px_rgba(0,107,196,0.06)]">
-              <FiCalendar className="h-3.5 w-3.5 text-blue-500" />
+            <label className="group relative ml-1 flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 transition hover:bg-blue-50">
+              <FiCalendar size={14} className="text-blue-600" aria-hidden="true" />
+              <span className="min-w-[7rem]">
+                <span className="block text-[6px] font-semibold uppercase tracking-[0.16em] text-blue-900/35">Date</span>
+                <span className="block font-mono text-[11px] font-semibold leading-tight text-blue-950">
+                  {new Date(`${date}T00:00:00`).toLocaleDateString([], {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </span>
+              </span>
               <input
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="bg-transparent font-display text-xs font-semibold tracking-wide text-blue-950 outline-none"
+                onChange={(event) => setDate(event.target.value)}
+                aria-label="Entry date"
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />
-            </div>
+            </label>
+          </div>
+
+          <div className="relative flex items-stretch">
+            <span className="flex min-w-[4.25rem] flex-col items-center justify-center rounded-xl border border-blue-100 bg-blue-50/50 px-3">
+              <span className="font-mono text-base font-semibold leading-none text-blue-800">{fields.length}</span>
+              <span className="mt-1 text-[7px] font-semibold uppercase tracking-[0.15em] text-blue-900/35">
+                {fields.length === 1 ? 'Field' : 'Fields'}
+              </span>
+            </span>
           </div>
         </div>
+      </header>
+
+      <div className="flex flex-wrap justify-end gap-2">
+        {role === 'superadmin' && (
+          <button
+            type="button"
+            onClick={resetFieldValues}
+            className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-800 transition hover:border-amber-300 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/30"
+          >
+            <FiRefreshCw size={14} /> Reset fields
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleCancel}
+          className="flex items-center gap-1.5 rounded-xl border border-blue-100 bg-white px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/20"
+        >
+          <FiX size={14} /> Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="flex min-w-[7.25rem] items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-[0_6px_16px_rgba(0,107,196,0.22)] transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_9px_20px_rgba(0,107,196,0.28)] disabled:cursor-wait disabled:opacity-60"
+        >
+          {saving ? <FiRefreshCw className="animate-spin" size={14} /> : <FiCheck size={14} />}
+          {isEditing || myEntryId
+            ? (saving ? 'Updating...' : 'Update')
+            : (saving ? 'Saving...' : 'Save')}
+        </button>
       </div>
 
-      {/* ── Record details (name) ── */}
-      <div className="flex flex-row items-center justify-between rounded-lg border border-blue-100/70 bg-blue-50/30 px-2 py-1.5">
-        <div className="flex items-center gap-1.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-[0_3px_8px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)]">
-            <FiEdit3 size={11} aria-hidden="true" />
-          </div>
-          <h2 className="font-display text-sm font-semibold text-blue-950">Record details</h2>
-        </div>
 
-        <div className="relative">
-          <FiUser className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-blue-400" />
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Entry name"
-            className="w-40 rounded-md border border-blue-100 bg-white py-1 pl-6 pr-2 text-sm text-blue-950 shadow-[0_1px_4px_rgba(0,107,196,0.06)] outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
-          />
-        </div>
-      </div>
-
-      {/* ── Fields ── */}
       {fields.length === 0 ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          No fields are configured yet. Ask a superadmin to set up fields.
-        </div>
+        <section className="rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-white p-8 text-center shadow-[0_12px_35px_rgba(120,53,15,0.08)]">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+            <FiAlertCircle size={21} />
+          </div>
+          <h2 className="mt-4 font-display text-lg font-semibold text-amber-950">No fields configured</h2>
+          <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-amber-800/70">
+            Ask a superadmin to configure the entry fields before you begin.
+          </p>
+        </section>
       ) : (
-        <>
-          <DynamicFieldsForm
-            fields={fields}
-            currentUserName={defaultName}
-            canReset={role === 'superadmin'}
-            onBoxChange={updateBox}
-            onDetailsChange={updateDetails}
-            onResetField={resetSingleField}
-          />
+        <div className="space-y-4">
+          <section>
+            <DynamicFieldsForm
+              fields={fields}
+              currentUserName={defaultName}
+              canReset={role === 'superadmin'}
+              onBoxChange={updateBox}
+              onDetailsChange={updateDetails}
+              onResetField={resetSingleField}
+            />
+          </section>
           <FinalTotalCard
             fields={fields}
             label={finalTotalLabel}
             icon={finalTotalIcon}
             sign={finalTotalSign}
           />
-        </>
+        </div>
       )}
 
       {error && (
-        <p className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <FiAlertCircle /> {error}
-        </p>
+        <div role="alert" className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-[0_8px_24px_rgba(185,28,28,0.08)]">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
+            <FiAlertCircle size={16} />
+          </span>
+          <div>
+            <p className="font-semibold">Unable to save this entry</p>
+            <p className="mt-0.5 text-xs text-red-700/75">{error}</p>
+          </div>
+        </div>
       )}
 
-      {/* ── Actions ── */}
-      <div className="flex flex-wrap gap-3">
-        {/* Save — 3-D raised button */}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_6px_20px_rgba(0,107,196,0.45),inset_0_1px_0_rgba(255,255,255,0.20)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(0,107,196,0.55)] active:translate-y-0 active:shadow-[0_3px_10px_rgba(0,107,196,0.35)] disabled:opacity-60"
-        >
-          <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
-          <span className="relative flex items-center gap-1.5">
-            <FiCheck size={14} />
-            {isEditing || myEntryId
-              ? (saving ? 'Updating…' : 'Update')
-              : (saving ? 'Saving…' : 'Save')}
-          </span>
-        </button>
-
-        {/* Cancel — ghost */}
-        <button
-          onClick={handleCancel}
-          className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-medium text-blue-800 shadow-[0_2px_8px_rgba(0,107,196,0.08)] transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-        >
-          <FiX size={14} /> Cancel
-        </button>
-
-        {/* Reset field values — superadmin only */}
-        {role === 'superadmin' && (
-          <button
-            onClick={resetFieldValues}
-            className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 shadow-[0_2px_8px_rgba(0,107,196,0.08)] transition hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
-          >
-            <FiRefreshCw size={14} /> Reset fields
-          </button>
-        )}
-      </div>
-
-      {/* ── Feedback modal ── */}
       {feedback && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/50 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/60 p-4 backdrop-blur-md"
           role="dialog"
           aria-modal="true"
           aria-labelledby="entry-feedback-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeFeedback();
+          }}
         >
-          <div className="relative w-full max-w-xs overflow-hidden rounded-2xl bg-white p-5 text-center shadow-2xl">
-            {/* top-edge highlight */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/60 to-transparent" />
-
-            <div className={`mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.10)] ${feedback === 'saved'
-                ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-[0_4px_14px_rgba(0,107,196,0.35)]'
-                : 'bg-amber-100 text-amber-700'
+          <div className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-white/60 bg-white p-6 text-center shadow-[0_30px_90px_rgba(7,39,71,0.35)]">
+            <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 ${feedback === 'saved'
+                ? 'bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-300'
+                : 'bg-gradient-to-r from-amber-500 via-amber-300 to-orange-300'
+              }`} />
+            <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${feedback === 'saved'
+                ? 'bg-blue-950 text-white shadow-[0_12px_28px_rgba(7,39,71,0.25)]'
+                : 'bg-amber-100 text-amber-700 shadow-[0_12px_28px_rgba(120,53,15,0.14)]'
               }`}>
-              {feedback === 'saved' ? <FiCheck size={20} /> : <FiX size={20} />}
+              {feedback === 'saved' ? <FiCheck size={24} /> : <FiX size={24} />}
             </div>
-
-            <h2 id="entry-feedback-title" className="font-display text-base text-blue-950">
-              {feedback === 'saved' ? 'Saved successfully' : 'Canceled'}
-            </h2>
-            <p className="mt-2 text-xs text-blue-900/55">
-              {feedback === 'saved' ? 'Your entry has been saved.' : 'Your changes were not saved.'}
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-blue-600/55">
+              {feedback === 'saved' ? 'All done' : 'Action canceled'}
             </p>
-
+            <h2 id="entry-feedback-title" className="mt-1 font-display text-xl font-semibold text-blue-950">
+              {feedback === 'saved' ? 'Entry saved successfully' : 'Changes discarded'}
+            </h2>
+            <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-blue-900/55">
+              {feedback === 'saved'
+                ? 'Your latest values are safely stored and ready for reporting.'
+                : 'No new changes were saved to this entry.'}
+            </p>
             <button
               onClick={closeFeedback}
-              className="relative mt-5 w-full overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.20)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,107,196,0.45)]"
+              className="mt-6 w-full rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,107,196,0.32)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(0,107,196,0.4)]"
             >
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
               {returnToReports ? 'Return to reports' : 'OK'}
             </button>
           </div>
