@@ -43,10 +43,10 @@ export default function DashboardHome() {
     },
     {
       key: 'reports',
-      show: Boolean(permissions.viewAllReports) || role === 'admin' || role === 'superadmin',
-      href: '/dashboard/reports',
+      show: role === 'admin' || role === 'superadmin',
+      href: role === 'admin' ? '/dashboard/reports/team' : '/dashboard/reports',
       icon: FiBarChart2,
-      title: 'View reports',
+      title: role === 'superadmin' ? 'View team reports' : 'View team report',
     },
     {
       key: 'fields',

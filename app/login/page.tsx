@@ -11,18 +11,16 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
     setLoading(true);
     try {
       await api.login(email, password);
       router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Could not sign in');
+    } catch {
+      // The API client shows the error notification.
     } finally {
       setLoading(false);
     }
@@ -107,12 +105,6 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
-
-              {error && (
-                <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {error}
-                </p>
-              )}
 
               {/* Submit — 3D raised button */}
               <button

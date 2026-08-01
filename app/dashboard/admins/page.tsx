@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiAlertCircle, FiCheckCircle, FiChevronDown, FiChevronRight, FiEdit2, FiKey, FiPower, FiTrash2, FiUserPlus, FiUsers } from 'react-icons/fi';
+import { FiChevronDown, FiChevronRight, FiEdit2, FiKey, FiPower, FiTrash2, FiUserPlus, FiUsers } from 'react-icons/fi';
 import { api } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import EditAccountModal from '@/components/EditAccountModal';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 
-type AdminRow = { _id: string; name: string; email: string; role: string; assignedAdminId?: string | null; isActive?: boolean };
+type AdminRow = { _id: string; name: string; email: string; role: string; teamName?: string; assignedAdminId?: string | null; isActive?: boolean };
 
 export default function AdminsPage() {
   const router = useRouter();
@@ -16,10 +17,9 @@ export default function AdminsPage() {
   const [users, setUsers] = useState<AdminRow[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [name, setName] = useState('');
+  const [teamName, setTeamName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AdminRow | null>(null);
@@ -34,7 +34,7 @@ export default function AdminsPage() {
       setAdmins(all.filter((u) => u.role === 'admin'));
       setUsers(all.filter((u) => u.role === 'user'));
     } catch (err: any) {
-      setError(err.message || 'Could not load admins');
+      toast.error(err.message || 'Could not load admins');
     } finally {
       setLoading(false);
     }
@@ -52,35 +52,36 @@ export default function AdminsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    setError(''); setSuccess('');
     const normalizedEmail = email.trim().toLocaleLowerCase();
     if (admins.some((a) => a.email.trim().toLocaleLowerCase() === normalizedEmail)) {
-      setError(`An account with the email "${normalizedEmail}" already exists.`);
+      toast.error(`An account with the email "${normalizedEmail}" already exists.`);
+      return;
+    }
+    const normalizedTeamName = teamName.trim().replace(/\s+/g, ' ');
+    if (admins.some((a) => a.teamName?.trim().toLocaleLowerCase() === normalizedTeamName.toLocaleLowerCase())) {
+      toast.error(`A team named "${normalizedTeamName}" already exists.`);
       return;
     }
     setCreating(true);
     try {
-      await api.createUser({ name: name.trim(), email: normalizedEmail, password, role: 'admin' });
-      setSuccess('Admin account created.');
-      setName(''); setEmail(''); setPassword('');
+      await api.createUser({ name: name.trim(), teamName: normalizedTeamName, email: normalizedEmail, password, role: 'admin' });
+      setName(''); setTeamName(''); setEmail(''); setPassword('');
       load();
-    } catch (err: any) {
-      setError(err.message || 'Could not create admin account');
+    } catch {
+      // The API client shows the error notification.
     } finally {
       setCreating(false);
     }
   }
 
   async function handleToggleStatus(admin: AdminRow) {
-    setError(''); setSuccess('');
     const nextActive = admin.isActive === false;
     setTogglingId(admin._id);
     try {
       await api.setAccountStatus(admin._id, nextActive);
       setAdmins((prev) => prev.map((a) => (a._id === admin._id ? { ...a, isActive: nextActive } : a)));
-      setSuccess(`${admin.name} is now ${nextActive ? 'active' : 'inactive'}.`);
-    } catch (err: any) {
-      setError(err.message || 'Could not update status');
+    } catch {
+      // The API client shows the error notification.
     } finally {
       setTogglingId(null);
     }
@@ -125,10 +126,15 @@ export default function AdminsPage() {
           </div>
           <h2 className="font-display text-xl text-blue-950">Create an admin</h2>
         </div>
-        <div className="grid grid-cols-1 items-end gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 items-end gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Name</label>
             <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name"
+              className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
+          </div>
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Unique team name</label>
+            <input required value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Example: North Production"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
@@ -141,7 +147,7 @@ export default function AdminsPage() {
             <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimum 6 characters"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
-          <div className="sm:col-span-2 lg:col-span-3">
+          <div className="sm:col-span-2 lg:col-span-4">
             <button type="submit" disabled={creating}
               className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,107,196,0.45)] active:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0">
               <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
@@ -150,9 +156,6 @@ export default function AdminsPage() {
           </div>
         </div>
       </form>
-
-      {error && <p className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><FiAlertCircle />{error}</p>}
-      {success && <p className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"><FiCheckCircle />{success}</p>}
 
       {/* ── Admins table ── */}
       <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
@@ -168,6 +171,7 @@ export default function AdminsPage() {
             <thead>
               <tr className="border-b border-blue-100 bg-blue-50/60 text-left text-xs uppercase tracking-wider text-blue-900/55">
                 <th className="px-5 py-3 font-medium">Name</th>
+                <th className="px-5 py-3 font-medium">Team name</th>
                 <th className="px-5 py-3 font-medium">Email</th>
                 <th className="px-5 py-3 font-medium">Assigned users</th>
                 <th className="px-5 py-3 font-medium text-right">Actions</th>
@@ -175,7 +179,7 @@ export default function AdminsPage() {
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={4} className="px-5 py-10 text-center">
+                <tr><td colSpan={5} className="px-5 py-10 text-center">
                   <div className="flex items-center justify-center gap-2 text-blue-900/40">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-500" />
                     <span className="font-mono text-xs">loading…</span>
@@ -183,7 +187,7 @@ export default function AdminsPage() {
                 </td></tr>
               )}
               {!loading && admins.length === 0 && (
-                <tr><td colSpan={4} className="px-5 py-10 text-center text-sm text-blue-900/40">No admins yet.</td></tr>
+                <tr><td colSpan={5} className="px-5 py-10 text-center text-sm text-blue-900/40">No admins yet.</td></tr>
               )}
               {!loading && admins.map((a) => {
                 const teamMembers = users.filter((u) => u.assignedAdminId === a._id);
@@ -192,6 +196,7 @@ export default function AdminsPage() {
                 <>
                 <tr key={a._id} className="border-b border-blue-50 transition last:border-0 hover:bg-blue-50/40">
                   <td className="px-5 py-4 font-medium text-blue-950">{a.name}</td>
+                  <td className="px-5 py-3 font-semibold text-blue-700">{a.teamName || 'Legacy team'}</td>
                   <td className="px-5 py-3 text-blue-900/60">{a.email}</td>
                   <td className="px-5 py-3">
                     <button
@@ -248,7 +253,7 @@ export default function AdminsPage() {
                 </tr>
                 {isExpanded && teamMembers.length > 0 && (
                   <tr key={`${a._id}-team`} className="border-b border-blue-50 bg-blue-50/30 last:border-0">
-                    <td colSpan={4} className="px-5 py-3">
+                    <td colSpan={5} className="px-5 py-3">
                       <div className="flex flex-wrap gap-2 pl-1">
                         {teamMembers.map((u) => (
                           <span key={u._id}
@@ -280,7 +285,6 @@ export default function AdminsPage() {
           onClose={() => setEditing(null)}
           onSaved={(updated) => {
             setAdmins((prev) => prev.map((a) => (a._id === updated._id ? { ...a, ...updated } : a)));
-            setSuccess('Profile updated.');
           }}
         />
       )}
@@ -289,7 +293,7 @@ export default function AdminsPage() {
         <ResetPasswordModal
           user={resetting}
           onClose={() => setResetting(null)}
-          onDone={() => setSuccess(`Password updated for ${resetting.name}.`)}
+          onDone={() => undefined}
         />
       )}
 
@@ -301,7 +305,6 @@ export default function AdminsPage() {
           onConfirm={async () => {
             await api.deleteUser(deleting._id);
             setAdmins((prev) => prev.filter((a) => a._id !== deleting._id));
-            setSuccess('Admin account removed.');
             setDeleting(null);
           }}
         />

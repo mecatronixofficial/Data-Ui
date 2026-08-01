@@ -42,6 +42,7 @@ export function fieldTotal(field: FieldValue) {
 
 export default function DynamicFieldsForm({
   fields,
+  syncVersion = 0,
   currentUserName,
   canReset,
   onBoxChange,
@@ -49,6 +50,7 @@ export default function DynamicFieldsForm({
   onResetField,
 }: {
   fields: FieldValue[];
+  syncVersion?: number;
   currentUserName?: string;
   canReset?: boolean;
   onBoxChange: (fieldIndex: number, boxIndex: number, value: number) => void;
@@ -59,7 +61,7 @@ export default function DynamicFieldsForm({
 
   return (
     <>
-      <div className="grid items-stretch gap-4 lg:grid-cols-2">
+      <div className={`grid items-stretch gap-4 ${fields.length > 1 ? 'lg:grid-cols-2' : 'grid-cols-1'}`}>
         {fields.map((field, fieldIndex) => {
           const groupA = sum(field.boxes.slice(0, field.groupSplit));
           const groupB = sum(field.boxes.slice(field.groupSplit));
@@ -71,75 +73,80 @@ export default function DynamicFieldsForm({
               key={field.name}
               className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_8px_28px_rgba(7,39,71,0.06)]"
             >
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-gradient-to-r from-blue-500 via-blue-300 to-transparent" />
-            <div className="flex flex-col gap-3 border-b border-blue-100 bg-blue-50/25 p-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 items-center gap-3">
-                {field.icon && (
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 font-display text-xs text-blue-700">
-                    <FieldIcon icon={field.icon} size={16} />
-                  </span>
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-gradient-to-r from-blue-500 via-blue-300 to-transparent" />
+              <div className="flex flex-col gap-3 border-b border-blue-100 bg-blue-50/25 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 w-full items-center justify-between gap-3">
+
+                  <div className="min-w-0">
+                    <h2 className="inline-flex items-center w-full gap-2 truncate font-display text-base font-semibold text-blue-950">
+                      {field.icon && (
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 font-display text-xs text-blue-700">
+                          <FieldIcon icon={field.icon} size={16} />
+                        </span>
+                      )}
+                      {field.name}
+                    </h2>
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="inline-flex items-center w-full gap-2 truncate font-display text-base font-semibold text-blue-950">
+                      {field.locked && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-blue-900/45">
+                          <FiLock size={9} /> View only
+                        </span>
+                      )}
+                    </h2>
+                  </div>
+                </div>
+                {canReset && !field.locked && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmIndex(fieldIndex)}
+                    aria-label={`Reset ${field.name} values`}
+                    title="Reset field values"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center self-end rounded-lg border border-transparent text-blue-900/35 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600 sm:self-auto"
+                  >
+                    <FiRefreshCw size={15} />
+                  </button>
                 )}
-                <div className="min-w-0">
-                  <h2 className="inline-flex items-center gap-2 truncate font-display text-base font-semibold text-blue-950">
-                    {field.name}
-                    {field.locked && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-blue-900/45">
-                        <FiLock size={9} /> View only
-                      </span>
-                    )}
-                  </h2>
-                </div>
               </div>
-              {canReset && !field.locked && (
-                <button
-                  type="button"
-                  onClick={() => setConfirmIndex(fieldIndex)}
-                  aria-label={`Reset ${field.name} values`}
-                  title="Reset field values"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center self-end rounded-lg border border-transparent text-blue-900/35 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600 sm:self-auto"
-                >
-                  <FiRefreshCw size={15} />
-                </button>
-              )}
-            </div>
 
-            <div className="grid flex-1 grid-cols-2 content-start gap-2 bg-white p-3 sm:grid-cols-3 xl:grid-cols-4">
-              {field.boxes.map((val, boxIndex) => (
-                <TallyBox
-                  idPrefix={`field-${fieldIndex}`}
-                  key={boxIndex}
-                  index={boxIndex + 1}
-                  name={field.boxNames[boxIndex]}
-                  icon={field.boxIcons?.[boxIndex]}
-                  color={field.boxColors?.[boxIndex]}
-                  value={val}
-                  details={field.details[boxIndex]}
-                  boxFields={field.boxFields?.[boxIndex]}
-                  currentUserName={currentUserName}
-                  locked={field.locked}
-                  onDetailsChange={(details) => onDetailsChange(fieldIndex, boxIndex, details)}
-                  onChange={(v) => onBoxChange(fieldIndex, boxIndex, v)}
-                />
-              ))}
-            </div>
+              <div className="grid flex-1 grid-cols-2 content-start gap-2 bg-white p-3 sm:grid-cols-3 xl:grid-cols-4">
+                {field.boxes.map((val, boxIndex) => (
+                  <TallyBox
+                    idPrefix={`field-${fieldIndex}`}
+                    key={`${boxIndex}-${syncVersion}`}
+                    index={boxIndex + 1}
+                    name={field.boxNames[boxIndex]}
+                    icon={field.boxIcons?.[boxIndex]}
+                    color={field.boxColors?.[boxIndex]}
+                    value={val}
+                    details={field.details[boxIndex]}
+                    boxFields={field.boxFields?.[boxIndex]}
+                    currentUserName={currentUserName}
+                    locked={field.locked}
+                    onDetailsChange={(details) => onDetailsChange(fieldIndex, boxIndex, details)}
+                    onChange={(v) => onBoxChange(fieldIndex, boxIndex, v)}
+                  />
+                ))}
+              </div>
 
-            <div className="flex items-center justify-end overflow-x-auto border-t border-blue-100 bg-blue-50/40 px-3 py-2 sm:px-4">
-              {field.calcType === 'grouped' ? (
-                <div className="flex shrink-0 items-center gap-2">
-                  <TotalPill label="" value={groupA} />
-                  <TotalPill label="" value={groupB} />
-                  <span className="font-display text-sm text-blue-900/20">=</span>
-                  <TotalPill label="" value={fieldTotal(field)} emphasize colorBySign />
-                </div>
-              ) : (
-                <div className="flex shrink-0 items-center gap-2">
-                  <TotalPill label="" value={positiveTotal} colorBySign />
-                  <TotalPill label="" value={negativeTotal} colorBySign />
-                  <span className="font-display text-sm text-blue-900/20">=</span>
-                  <TotalPill label="" value={fieldTotal(field)} emphasize colorBySign />
-                </div>
-              )}
-            </div>
+              <div className="flex items-center justify-end overflow-x-auto border-t border-blue-100 bg-blue-50/40 px-3 py-2 sm:px-4">
+                {field.calcType === 'grouped' ? (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <TotalPill label="" value={groupA} />
+                    <TotalPill label="" value={groupB} />
+                    <span className="font-display text-sm text-blue-900/20">=</span>
+                    <TotalPill label="" value={fieldTotal(field)} emphasize colorBySign />
+                  </div>
+                ) : (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <TotalPill label="" value={positiveTotal} colorBySign />
+                    <TotalPill label="" value={negativeTotal} colorBySign />
+                    <span className="font-display text-sm text-blue-900/20">=</span>
+                    <TotalPill label="" value={fieldTotal(field)} emphasize colorBySign />
+                  </div>
+                )}
+              </div>
             </section>
           );
         })}
@@ -246,9 +253,8 @@ export function FinalTotalCard({
             {fields.map((field, index) => (
               <Fragment key={field.name || index}>
                 {index > 0 && (
-                  <span className={`shrink-0 font-display text-base font-semibold ${
-                    sign === 'subtract' ? 'text-red-500' : 'text-emerald-600'
-                  }`}>
+                  <span className={`shrink-0 font-display text-base font-semibold ${sign === 'subtract' ? 'text-red-500' : 'text-emerald-600'
+                    }`}>
                     {sign === 'subtract' ? '−' : '+'}
                   </span>
                 )}
@@ -258,17 +264,11 @@ export function FinalTotalCard({
           </div>
         )}
 
-        <div className={`flex shrink-0 items-center justify-between gap-4 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2 sm:min-w-[11rem] ${
-          single ? 'xl:col-start-3' : ''
-        }`}>
-          <div>
-            <p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-blue-900/35">Main total</p>
-            <p className="mt-0.5 text-xs text-blue-900/45">All values</p>
-          </div>
+        <div className={`flex min-w-[5rem] shrink-0 items-center justify-end rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2 ${single ? 'xl:col-start-3' : ''
+          }`}>
           <span
-            className={`font-mono text-2xl font-semibold tracking-tight tabular ${
-              finalTotal < 0 ? 'text-red-600' : finalTotal > 0 ? 'text-blue-700' : 'text-blue-950'
-            }`}
+            className={`font-mono text-2xl font-semibold tracking-tight tabular ${finalTotal < 0 ? 'text-red-600' : finalTotal > 0 ? 'text-blue-700' : 'text-blue-950'
+              }`}
           >
             {finalTotal}
           </span>

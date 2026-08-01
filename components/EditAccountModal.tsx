@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { FiAlertCircle, FiCheck, FiUser, FiX } from 'react-icons/fi';
+import { FiCheck, FiUser, FiX } from 'react-icons/fi';
 import { api } from '@/lib/api';
 
-type Account = { _id: string; name: string; email: string };
+type Account = { _id: string; name: string; email: string; role?: string; teamName?: string };
 
 export default function EditAccountModal({
   user,
@@ -17,22 +17,22 @@ export default function EditAccountModal({
 }) {
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
+  const [teamName, setTeamName] = useState(user.teamName || '');
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
     setSaving(true);
     try {
       const updated = await api.updateAccountProfile(user._id, {
         name: name.trim(),
         email: email.trim().toLocaleLowerCase(),
+        ...(user.role === 'admin' ? { teamName: teamName.trim() } : {}),
       });
       onSaved(updated);
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Could not update profile');
+    } catch {
+      // The API client shows the error notification.
     } finally {
       setSaving(false);
     }
@@ -75,13 +75,14 @@ export default function EditAccountModal({
               <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com"
                 className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
             </div>
+            {user.role === 'admin' && (
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Unique team name</label>
+                <input required value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Team name"
+                  className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
+              </div>
+            )}
           </div>
-
-          {error && (
-            <p className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-              <FiAlertCircle size={13} />{error}
-            </p>
-          )}
 
           <div className="mt-6 flex justify-end gap-3 border-t border-blue-100 pt-4">
             <button type="button" onClick={onClose} disabled={saving}

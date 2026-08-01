@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiAlertCircle, FiCheck, FiChevronDown, FiChevronUp, FiLock, FiPlus, FiTrash2, FiUsers, FiX } from 'react-icons/fi';
+import { FiCheck, FiChevronDown, FiChevronUp, FiLock, FiPlus, FiTrash2, FiX } from 'react-icons/fi';
 import { api, type BoxFieldDef, type FinalTotalSign } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import IconPicker, { FieldIcon } from '@/components/IconPicker';
 import ColorPicker, { boxColorHex } from '@/components/ColorPicker';
 
 type CalcType = 'grouped' | 'signed';
-
-type Account = { _id: string; name: string; role: string };
 
 type FieldRow = {
   _id?: string;
@@ -21,7 +20,6 @@ type FieldRow = {
   boxFields: BoxFieldDef[][];
   calcType: CalcType;
   groupSplit: number;
-  visibleUserIds: string[];
   userOnlyEdit: boolean;
 };
 
@@ -42,6 +40,22 @@ const CURRENCY_BOX_FIELDS: BoxFieldDef[] = [
   { label: 'Value', type: 'computed', formula: { op: 'percentAdd', a: 'INR', b: 'Bonus %' }, sumTotal: true },
 ];
 
+// One-click preset for a crypto-style box: the user only enters USD, the superadmin sets
+// the USD->INR rate once (auto: 'constant'), and INR is derived (USD x rate). +USD/-USD/
+// +INR/-INR are filled in automatically by TallyBox (positive USD/INR go to the "+" column,
+// negative go to the "-" column) — they're never typed in directly. Only INR is flagged
+// sumTotal, so the box's main total (shown on the closed box tile) is the INR value; the
+// four +/- columns instead show as separate totals along the bottom of the open box.
+const CRYPTO_BOX_FIELDS: BoxFieldDef[] = [
+  { label: 'USD', type: 'number' },
+  { label: 'INR per USD', type: 'number', auto: 'constant', constant: 90 },
+  { label: 'INR', type: 'computed', formula: { op: 'multiply', a: 'USD', b: 'INR per USD' }, sumTotal: true },
+  { label: '+USD', type: 'number' },
+  { label: '-USD', type: 'number' },
+  { label: '+INR', type: 'number' },
+  { label: '-INR', type: 'number' },
+];
+
 // One-click preset matching the "S.No / Date / Time / In / Out / From / To / Sent By"
 // layout. Out adds to the box total, In subtracts from it (e.g. 2000 Out - 1500 In = 500).
 const TEAM_BOX_FIELDS: BoxFieldDef[] = [
@@ -55,20 +69,13 @@ const TEAM_BOX_FIELDS: BoxFieldDef[] = [
   { label: 'Sent By', type: 'text', auto: 'user' },
 ];
 
-type Feedback = { type: 'added' | 'removed' | 'saved'; text: string };
 type ConfirmDelete = { index: number; name: string };
-type VisibilityEditor = { index: number; draft: string[] };
-
 export default function FieldsPage() {
   const router = useRouter();
   const [rows, setRows] = useState<FieldRow[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ConfirmDelete | null>(null);
-  const [visibilityEditor, setVisibilityEditor] = useState<VisibilityEditor | null>(null);
   const [boxEditor, setBoxEditor] = useState<{ index: number; boxIndex: number } | null>(null);
   // true only for super admin (manageFields permission)
   const [canEdit, setCanEdit] = useState(false);
@@ -78,22 +85,18 @@ export default function FieldsPage() {
   const [finalTotalIcon, setFinalTotalIconState] = useState('');
   const [finalTotalSign, setFinalTotalSignState] = useState<FinalTotalSign>('add');
   const [finalTotalSaving, setFinalTotalSaving] = useState(false);
-  const [finalTotalError, setFinalTotalError] = useState('');
-  const [finalTotalFeedback, setFinalTotalFeedback] = useState(false);
 
   function load() {
     setLoading(true);
-    Promise.all([api.me(), api.getFields(), api.listUsers()])
-      .then(([user, fields, users]) => {
+    Promise.all([api.me(), api.getFields()])
+      .then(([user, fields]) => {
         const hasManage = Boolean(user.permissions?.manageFields);
         if (!hasManage) {
           router.replace('/dashboard');
           return;
         }
         setCanEdit(true);
-        setAccounts(users.filter((u: any) => u.role === 'user' || u.role === 'admin'));
-        setRows(
-          fields.map((f: any) => ({
+        const loadedRows = fields.map((f: any) => ({
             _id: f._id,
             name: f.name,
             icon: f.icon || '',
@@ -103,12 +106,11 @@ export default function FieldsPage() {
             boxFields: f.boxNames.map((_: string, i: number) => f.boxFields?.[i]?.length ? f.boxFields[i] : SIMPLE_BOX_FIELDS),
             calcType: f.calcType,
             groupSplit: f.groupSplit,
-            visibleUserIds: f.visibleUserIds || [],
             userOnlyEdit: Boolean(f.userOnlyEdit),
-          })),
-        );
+          }));
+        setRows(loadedRows);
       })
-      .catch((err: any) => setError(err.message || 'Could not load fields'))
+      .catch((err: any) => toast.error(err.message || 'Could not load fields'))
       .finally(() => setLoading(false));
     api.getFinalTotalSettings()
       .then((settings) => {
@@ -116,27 +118,20 @@ export default function FieldsPage() {
         setFinalTotalIconState(settings.icon);
         setFinalTotalSignState(settings.sign);
       })
-      .catch(() => {});
+      .catch((err: any) => toast.error(err.message || 'Could not load Final Total settings'));
   }
 
   useEffect(load, [router]);
 
-  function closeFeedback() {
-    setFeedback(null);
-  }
-
   async function saveFinalTotalSettings() {
     setFinalTotalSaving(true);
-    setFinalTotalError('');
-    setFinalTotalFeedback(false);
     try {
       const result = await api.updateFinalTotalSettings({ label: finalTotalLabel.trim() || 'Final Total', icon: finalTotalIcon, sign: finalTotalSign });
       setFinalTotalLabelState(result.label);
       setFinalTotalIconState(result.icon);
       setFinalTotalSignState(result.sign);
-      setFinalTotalFeedback(true);
-    } catch (err: any) {
-      setFinalTotalError(err.message || 'Could not save Final Total settings');
+    } catch {
+      // The API client shows the error notification.
     } finally {
       setFinalTotalSaving(false);
     }
@@ -159,12 +154,10 @@ export default function FieldsPage() {
         boxFields: [SIMPLE_BOX_FIELDS],
         calcType: 'signed',
         groupSplit: 0,
-        visibleUserIds: accounts.map((a) => a._id),
         userOnlyEdit: false,
       },
     ]);
-    setError('');
-    setFeedback({ type: 'added', text: `"${fieldName}" added. Click Save to keep it.` });
+    toast.info(`"${fieldName}" added. Click Save to keep it.`);
   }
 
   function removeField(index: number) {
@@ -182,16 +175,15 @@ export default function FieldsPage() {
     if (row._id) {
       try {
         await api.deleteField(row._id);
-      } catch (err: any) {
-        setError(err.message || 'Could not remove field');
+      } catch {
+        // The API client shows the error notification.
         setConfirmDelete(null);
         return;
       }
     }
     setRows((prev) => prev.filter((_, i) => i !== index));
-    setError('');
     setConfirmDelete(null);
-    setFeedback({ type: 'removed', text: `"${name}" was removed.` });
+    if (!row._id) toast.info(`"${name}" was removed.`);
   }
 
   function moveField(index: number, direction: -1 | 1) {
@@ -264,21 +256,6 @@ export default function FieldsPage() {
     });
   }
 
-  function visibilitySummary(row: FieldRow) {
-    if (accounts.length === 0) return 'No accounts yet';
-    if (row.visibleUserIds.length === 0) return 'Hidden from everyone';
-    if (row.visibleUserIds.length === accounts.length) return 'Everyone';
-    return `${row.visibleUserIds.length} of ${accounts.length} selected`;
-  }
-
-  function openVisibilityEditor(index: number) {
-    setVisibilityEditor({ index, draft: [...rows[index].visibleUserIds] });
-  }
-
-  function closeVisibilityEditor() {
-    setVisibilityEditor(null);
-  }
-
   function openBoxEditor(index: number, boxIndex: number) {
     setBoxEditor({ index, boxIndex });
   }
@@ -287,31 +264,8 @@ export default function FieldsPage() {
     setBoxEditor(null);
   }
 
-  function toggleDraftAccount(userId: string) {
-    setVisibilityEditor((cur) => {
-      if (!cur) return cur;
-      const draft = cur.draft.includes(userId) ? cur.draft.filter((id) => id !== userId) : [...cur.draft, userId];
-      return { ...cur, draft };
-    });
-  }
-
-  function setDraftAll() {
-    setVisibilityEditor((cur) => (cur ? { ...cur, draft: accounts.map((a) => a._id) } : cur));
-  }
-
-  function setDraftNone() {
-    setVisibilityEditor((cur) => (cur ? { ...cur, draft: [] } : cur));
-  }
-
-  function saveVisibilityEditor() {
-    if (!visibilityEditor) return;
-    updateRow(visibilityEditor.index, { visibleUserIds: visibilityEditor.draft });
-    setVisibilityEditor(null);
-  }
-
   async function save() {
     setSaving(true);
-    setError('');
     const saved: FieldRow[] = [...rows];
     try {
       for (let index = 0; index < rows.length; index += 1) {
@@ -326,7 +280,6 @@ export default function FieldsPage() {
           boxIcons: row.boxIcons,
           boxColors: row.boxColors,
           boxFields: row.boxFields,
-          visibleUserIds: row.visibleUserIds,
           userOnlyEdit: row.userOnlyEdit,
         };
         const result = row._id ? await api.updateField(row._id, payload) : await api.createField(payload);
@@ -340,22 +293,22 @@ export default function FieldsPage() {
           boxFields: result.boxNames.map((_: string, i: number) => result.boxFields?.[i]?.length ? result.boxFields[i] : SIMPLE_BOX_FIELDS),
           calcType: result.calcType,
           groupSplit: result.groupSplit,
-          visibleUserIds: result.visibleUserIds || [],
           userOnlyEdit: Boolean(result.userOnlyEdit),
         };
       }
       setRows(saved);
-      setFeedback({ type: 'saved', text: 'Fields saved. All users will see these changes.' });
-    } catch (err: any) {
+    } catch {
       // Persist whichever fields already saved successfully so retrying doesn't recreate them.
       setRows(saved);
-      setError(err.message || 'Could not save fields');
+      // The API client shows the error notification.
     } finally {
       setSaving(false);
     }
   }
 
   if (loading) return <p className="text-sm text-blue-900/50">Loading fields...</p>;
+
+  const indexedRows = rows.map((row, index) => ({ row, index }));
 
   return (
     <div className="space-y-6">
@@ -420,8 +373,6 @@ export default function FieldsPage() {
             </button>
           )}
         </div>
-        {finalTotalError && <p className="mt-3 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><FiAlertCircle />{finalTotalError}</p>}
-        {finalTotalFeedback && <p className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"><FiCheck />Final Total settings saved.</p>}
       </section>
 
       {rows.length === 0 && (
@@ -430,7 +381,7 @@ export default function FieldsPage() {
         </div>
       )}
 
-      {rows.map((row, index) => (
+      {indexedRows.map(({ row, index }) => (
         <section key={row._id || `new-${index}`} className="rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
           <div className="mb-5 flex items-center gap-3">
             <IconPicker value={row.icon} onChange={(icon) => updateRow(index, { icon })} disabled={!canEdit} />
@@ -520,38 +471,23 @@ export default function FieldsPage() {
             </div>
 
             <div>
-              <p className="mb-2 text-[10px] lg:text-right font-semibold uppercase tracking-wider text-blue-900/55">Visible to</p>
-              <button
-                type="button"
-                disabled={!canEdit}
-                onClick={() => canEdit && openVisibilityEditor(index)}
-                className="flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-medium text-blue-800 hover:bg-blue-50 disabled:cursor-default disabled:opacity-60"
-              >
-                <FiUsers size={14} />
-                {visibilitySummary(row)}
-              </button>
-            </div>
-
-            <div>
-              <p className="mb-2 text-[10px] lg:text-right font-semibold uppercase tracking-wider text-blue-900/55">Who can edit</p>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/55 lg:text-right">Work assignment</p>
               <button
                 type="button"
                 disabled={!canEdit}
                 onClick={() => canEdit && updateRow(index, { userOnlyEdit: !row.userOnlyEdit })}
-                title="Toggle which side of an admin's team can edit this field's values"
+                title="Choose whether the Admin or assigned User enters this field's values"
                 className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition disabled:cursor-default disabled:opacity-60 ${
                   row.userOnlyEdit ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-blue-200 bg-white text-blue-800 hover:bg-blue-50'
                 }`}
               >
                 <FiLock size={14} />
-                {row.userOnlyEdit ? 'User only (admin sees, can’t edit)' : 'Admin only'}
+                {row.userOnlyEdit ? 'User work (Admin view only)' : 'Admin work (User view only)'}
               </button>
             </div>
           </div>
         </section>
       ))}
-
-      {error && <p className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><FiAlertCircle />{error}</p>}
 
       {canEdit && confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="fields-confirm-title">
@@ -571,102 +507,6 @@ export default function FieldsPage() {
               </button>
               <button onClick={confirmRemoveField} className="flex-1 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700">
                 Remove
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {feedback && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="fields-feedback-title">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
-            <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${feedback.type === 'removed' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-              {feedback.type === 'removed' ? <FiTrash2 size={25} /> : <FiCheck size={25} />}
-            </div>
-            <h2 id="fields-feedback-title" className="font-display text-2xl text-blue-950">
-              {feedback.type === 'added' && 'Field added'}
-              {feedback.type === 'removed' && 'Field removed'}
-              {feedback.type === 'saved' && 'Saved successfully'}
-            </h2>
-            <p className="mt-2 text-sm text-blue-900/55">{feedback.text}</p>
-            <button onClick={closeFeedback} className="mt-6 w-full rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
-              OK
-            </button>
-          </div>
-        </div>
-      )}
-
-      {canEdit && visibilityEditor && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/45 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="visibility-editor-title"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeVisibilityEditor();
-          }}
-        >
-          <div className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-600">
-                  {rows[visibilityEditor.index]?.name || 'Field'}
-                </p>
-                <h2 id="visibility-editor-title" className="font-display text-xl text-blue-950">Visible to</h2>
-              </div>
-              <button type="button" onClick={closeVisibilityEditor} aria-label="Close" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-700">
-                <FiX size={18} />
-              </button>
-            </div>
-
-            <div className="overflow-y-auto p-5">
-              {accounts.length === 0 ? (
-                <p className="text-sm text-blue-900/40">No admin or user accounts yet.</p>
-              ) : (
-                <>
-                  <div className="mb-4 flex gap-2">
-                    <button type="button" onClick={setDraftAll} className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-800 hover:bg-blue-50">
-                      Select all
-                    </button>
-                    <button type="button" onClick={setDraftNone} className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-800 hover:bg-blue-50">
-                      Clear all
-                    </button>
-                  </div>
-
-                  {(['admin', 'user'] as const).map((role) => {
-                    const group = accounts.filter((a) => a.role === role);
-                    if (group.length === 0) return null;
-                    return (
-                      <div key={role} className="mb-4 last:mb-0">
-                        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-blue-900/40">
-                          {role === 'admin' ? 'Admins' : 'Users'}
-                        </p>
-                        <div className="space-y-0.5">
-                          {group.map((account) => (
-                            <label key={account._id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-blue-950 hover:bg-blue-50/60">
-                              <input
-                                type="checkbox"
-                                checked={visibilityEditor.draft.includes(account._id)}
-                                onChange={() => toggleDraftAccount(account._id)}
-                                className="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
-                              />
-                              {account.name}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
-
-            <div className="flex gap-3 border-t border-blue-100 bg-blue-50/60 px-5 py-4">
-              <button type="button" onClick={closeVisibilityEditor} className="flex-1 rounded-xl border border-blue-200 bg-white px-5 py-2.5 text-sm font-semibold text-blue-800 hover:bg-blue-50">
-                Cancel
-              </button>
-              <button type="button" onClick={saveVisibilityEditor} className="flex-1 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
-                Save
               </button>
             </div>
           </div>
@@ -866,6 +706,13 @@ function BoxEditor({
                 className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-50"
               >
                 Use Currency Conversion template
+              </button>
+              <button
+                type="button"
+                onClick={() => onFieldsChange(CRYPTO_BOX_FIELDS)}
+                className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-50"
+              >
+                Use Crypto template
               </button>
               {!simple && (
                 <button

@@ -35,12 +35,11 @@ export default function Sidebar({
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [reportsMenuOpen, setReportsMenuOpen] = useState(false);
 
-  const showReportsMenu = role === 'superadmin';
+  const showReportsMenu = role === 'superadmin' || role === 'admin';
 
   const links = [
     { href: '/dashboard', label: 'Dashboard', icon: FiHome, show: true },
     { href: '/dashboard/entry/new', label: name || 'New Entry', icon: FiPlusSquare, show: role === 'admin' || role === 'user' },
-    { href: '/dashboard/reports', label: 'Reports', icon: FiBarChart2, show: !showReportsMenu && (permissions?.viewAllReports || role === 'admin' || role === 'superadmin') },
     { href: '/dashboard/fields', label: 'Fields', icon: FiTag, show: permissions?.manageFields || role === 'superadmin' },
   ].filter((link) => link.show);
   const settingsLink = { href: '/dashboard/settings', label: 'Settings', icon: FiSettings };
@@ -53,11 +52,13 @@ export default function Sidebar({
   const showCreateAccount = role === 'superadmin';
   const createAccountActive = createAccountLinks.some((l) => pathname === l.href);
 
-  const reportsLinks = [
-    { href: '/dashboard/reports', label: 'All Reports', icon: FiBarChart2 },
-    { href: '/dashboard/reports/admin', label: 'Admin Reports', icon: FiShield },
-    { href: '/dashboard/reports/user', label: 'User Reports', icon: FiUsers },
-  ];
+  const reportsLinks = role === 'superadmin'
+    ? [
+        { href: '/dashboard/reports', label: 'Team Reports', icon: FiBarChart2 },
+      ]
+    : [
+        { href: '/dashboard/reports/team', label: 'Team Report', icon: FiUsers },
+      ];
   const reportsActive = pathname === '/dashboard/reports' || pathname.startsWith('/dashboard/reports/');
 
   useEffect(() => {

@@ -13,4 +13,5 @@ next-env.d.ts
 .env.production
 .env*.local
 .backend-local*.log
+.backend-team-runtime*.log
 .frontend-local*.log
