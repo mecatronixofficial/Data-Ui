@@ -23,26 +23,46 @@ async function request(
   options: RequestInit = {},
   notifications: RequestNotifications = {},
 ) {
-  const res = await fetch(`${BASE}${path}`, {
-    ...options,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-  });
+  const method = (options.method || 'GET').toUpperCase();
+  const shouldNotifyError = notifications.error ?? method !== 'GET';
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      ...options,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+    });
+  } catch {
+    const message = 'Could not reach the server. Check your connection and try again.';
+    if (shouldNotifyError) {
+      showToast({ message, tone: 'error', duration: 6000 });
+    }
+    throw new ApiError(message, 0);
+  }
 
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
-    try {
-      const body = await res.json();
-      message = body.message || message;
-    } catch {
-      // ignore
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      try {
+        const body = await res.json();
+        message = body?.message || message;
+      } catch {
+        // Keep the status-based fallback for malformed JSON responses.
+      }
+    } else {
+      const text = (await res.text().catch(() => '')).trim();
+      if (text.includes('FUNCTION_INVOCATION_FAILED')) {
+        message = 'The backend service failed to start. Check the deployment logs.';
+      } else if (text && text.length <= 300) {
+        message = text;
+      }
     }
     const normalizedMessage = Array.isArray(message) ? message.join(', ') : message;
-    const method = (options.method || 'GET').toUpperCase();
-    if (notifications.error ?? method !== 'GET') {
+    if (shouldNotifyError) {
       showToast({ message: normalizedMessage, tone: 'error', duration: 6000 });
     }
     throw new ApiError(normalizedMessage, res.status);
