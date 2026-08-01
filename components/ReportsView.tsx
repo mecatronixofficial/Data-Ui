@@ -2,17 +2,28 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiAlertCircle, FiCheck, FiClock, FiColumns, FiDownload, FiEdit2, FiFileText, FiFilter, FiFlag, FiSearch, FiShield, FiTrash2, FiX } from 'react-icons/fi';
+import { FiCheck, FiClock, FiColumns, FiDownload, FiEdit2, FiExternalLink, FiFileText, FiFilter, FiFlag, FiSearch, FiShield, FiTrash2, FiX } from 'react-icons/fi';
 import { api, exportUrl, blankBoxDetail, computeFieldLocked, type BoxFieldDef, type FinalTotalSign } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import { type BoxDetail } from '@/components/TallyBox';
 import { type Operator } from '@/components/OperatorToggle';
 import DynamicFieldsForm, { FinalTotalCard, type FieldValue } from '@/components/DynamicFieldsForm';
 
 type FieldMeta = { name: string; order: number; boxNames: string[] };
+type FieldDefinition = FieldMeta & {
+  icon?: string;
+  boxIcons?: string[];
+  boxColors?: string[];
+  boxFields?: BoxFieldDef[][];
+  calcType: 'grouped' | 'signed';
+  groupSplit: number;
+  userOnlyEdit?: boolean;
+};
 type ColumnDef = { key: string; label: string };
 
 const FIXED_COLUMNS: ColumnDef[] = [
   { key: 'name', label: 'Name' },
+  { key: 'team', label: 'Team' },
   { key: 'date', label: 'Date' },
   { key: 'total', label: 'Final Total' },
   { key: 'addedBy', label: 'Added by' },
@@ -24,13 +35,14 @@ type EntryField = {
   calcType: 'grouped' | 'signed'; groupSplit: number; operator: string; total: number;
 };
 type EntryPerson = { _id?: string; name: string; role?: string };
-type Account = { _id: string; name: string; role: string; assignedAdminId?: string | null };
+type Account = { _id: string; name: string; role: string; teamName?: string; assignedAdminId?: string | null };
 type EntryChange = { label: string; from: string | number | null; to: string | number | null };
 type EntryHistoryItem = { updatedAt: string; updatedBy?: EntryPerson; changes: EntryChange[] };
 type Entry = {
   _id: string; name: string; date: string; fields: EntryField[];
   fieldOperators: string[]; finalTotal: number; createdAt: string;
   updatedAt: string; createdBy?: EntryPerson; updatedBy?: EntryPerson;
+  ownerAccountId?: string; ownerRole?: 'admin' | 'user'; teamAdminId?: string; teamName?: string;
   history?: EntryHistoryItem[];
 };
 type EditingEntry = { _id: string; name: string; date: string; fields: FieldValue[] };
@@ -50,14 +62,17 @@ function RoleBadge({ role }: { role?: string }) {
   );
 }
 
-export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'user' }) {
+export default function ReportsView({
+  scope = 'mine',
+}: {
+  scope?: 'mine' | 'team' | 'all';
+}) {
   const router = useRouter();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [editing, setEditing] = useState<EditingEntry | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Entry | null>(null);
@@ -65,36 +80,45 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
   const [historyEntry, setHistoryEntry] = useState<Entry | null>(null);
   const [historyItems, setHistoryItems] = useState<EntryHistoryItem[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyError, setHistoryError] = useState('');
   const [role, setRole] = useState('');
   const [canManageReports, setCanManageReports] = useState(false);
   const [canEditReports, setCanEditReports] = useState(false);
   const [canManageReportSettings, setCanManageReportSettings] = useState(false);
   const [fields, setFields] = useState<FieldMeta[]>([]);
+  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
   const [visibleColumns, setVisibleColumns] = useState<string[] | null>(null);
   const [draftColumns, setDraftColumns] = useState<Set<string>>(new Set());
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [columnsSaving, setColumnsSaving] = useState(false);
-  const [columnsFeedback, setColumnsFeedback] = useState('');
   const [currentUserName, setCurrentUserName] = useState('');
+  const [currentTeamName, setCurrentTeamName] = useState('');
   const [editLocks, setEditLocks] = useState<Map<string, boolean>>(new Map());
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [adminFilter, setAdminFilter] = useState('');
+  const [teamFilter, setTeamFilter] = useState('');
   const [finalTotalLabel, setFinalTotalLabel] = useState('Final Total');
   const [finalTotalIcon, setFinalTotalIcon] = useState('');
   const [finalTotalSign, setFinalTotalSign] = useState<FinalTotalSign>('add');
 
-  const pageTitle = roleFilter === 'admin' ? 'Admin Reports' : roleFilter === 'user' ? 'User Reports' : 'Reports';
-  const pageEyebrow = roleFilter ? 'Overview · Super Admin' : 'Overview';
+  const pageTitle = scope === 'team'
+    ? (currentTeamName ? `${currentTeamName} Report` : 'Team Report')
+    : role === 'superadmin'
+      ? 'Team Reports'
+      : 'Report';
+  const pageEyebrow = scope === 'team' ? 'Your team' : 'Super Admin';
 
-  async function load() {
-    setLoading(true); setError('');
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     try {
-      const data = await api.allEntries({ name, startDate, endDate });
-      const scoped = roleFilter ? data.filter((e: Entry) => e.createdBy?.role === roleFilter) : data;
-      setEntries(scoped);
+      const data = await api.allEntries({
+        name,
+        startDate,
+        endDate,
+        scope,
+        teamName: teamFilter || undefined,
+      });
+      setEntries(data);
       const seen = new Map<string, { order: number; boxNames: string[] }>();
-      for (const entry of scoped) {
+      for (const entry of data) {
         for (let fi = 0; fi < entry.fields.length; fi++) {
           const f = entry.fields[fi];
           if (!seen.has(f.name)) seen.set(f.name, { order: fi, boxNames: f.boxNames });
@@ -102,17 +126,26 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
       }
       setFields(Array.from(seen.entries()).map(([n, { order, boxNames }]) => ({ name: n, order, boxNames })));
     } catch (err: any) {
-      setError(err.message || 'Could not load reports');
+      toast.error(err.message || 'Could not load reports');
     } finally { setLoading(false); }
   }
 
+  const reportFields = useMemo<FieldMeta[]>(() => {
+    const combined = new Map<string, FieldMeta>();
+    for (const field of fieldDefinitions) combined.set(field.name, field);
+    for (const field of fields) {
+      if (!combined.has(field.name)) combined.set(field.name, field);
+    }
+    return Array.from(combined.values());
+  }, [fieldDefinitions, fields]);
+
   const dynamicColumns = useMemo<ColumnDef[]>(() =>
-    [...fields].sort((a, b) => a.order - b.order).flatMap((field) =>
+    [...reportFields].sort((a, b) => a.order - b.order).flatMap((field) =>
       field.boxNames.map((boxName, boxIndex) => ({ key: `box:${field.name}:${boxIndex}`, label: `${field.name} – ${boxName}` }))
-    ), [fields]);
+    ), [reportFields]);
 
   const allColumns = useMemo<ColumnDef[]>(
-    () => [FIXED_COLUMNS[0], FIXED_COLUMNS[1], ...dynamicColumns, FIXED_COLUMNS[2], FIXED_COLUMNS[3], FIXED_COLUMNS[4]],
+    () => [FIXED_COLUMNS[0], FIXED_COLUMNS[1], FIXED_COLUMNS[2], ...dynamicColumns, FIXED_COLUMNS[3], FIXED_COLUMNS[4], FIXED_COLUMNS[5]],
     [dynamicColumns],
   );
 
@@ -131,36 +164,8 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
     return field.boxes[boxIndex];
   }
 
-  // Superadmin-only: which admin's team a record belongs to — the record's own account
-  // if it's an admin's personal entry, otherwise the admin assigned to the matching user.
-  const accountsByName = useMemo(() => {
-    const map = new Map<string, Account>();
-    for (const a of accounts) map.set(a.name.trim().toLowerCase(), a);
-    return map;
-  }, [accounts]);
-  const accountsById = useMemo(() => {
-    const map = new Map<string, Account>();
-    for (const a of accounts) map.set(a._id, a);
-    return map;
-  }, [accounts]);
   const admins = useMemo(() => accounts.filter((a) => a.role === 'admin'), [accounts]);
-
-  function resolveOwningAdminName(entry: Entry): string | null {
-    const person = accountsByName.get(entry.name.trim().toLowerCase())
-      || (entry.createdBy?._id ? accountsById.get(entry.createdBy._id) : undefined);
-    if (!person) return null;
-    if (person.role === 'admin') return person.name;
-    if (person.role === 'user' && person.assignedAdminId) {
-      return accountsById.get(person.assignedAdminId)?.name || null;
-    }
-    return null;
-  }
-
-  const displayedEntries = useMemo(() => {
-    if (!adminFilter) return entries;
-    return entries.filter((e) => resolveOwningAdminName(e) === adminFilter);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entries, adminFilter, accountsByName, accountsById]);
+  const displayedEntries = entries;
 
   function toggleDraftColumn(key: string) {
     if (key === 'name') return;
@@ -177,21 +182,25 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
   }, [columnsOpen, allColumns]);
 
   async function saveColumns() {
-    setColumnsSaving(true); setColumnsFeedback('');
+    setColumnsSaving(true);
     try {
       const result = await api.updateReportSettings(Array.from(draftColumns));
       setVisibleColumns(result.visibleColumns);
-      setColumnsFeedback('Report columns saved.');
-    } catch (err: any) { setError(err.message || 'Could not save report columns'); }
+    } catch {
+      // The API client shows the error notification.
+    }
     finally { setColumnsSaving(false); }
   }
 
   useEffect(() => {
     api.me().then((user) => {
-      if (roleFilter && user.role !== 'superadmin') { router.replace('/dashboard/reports'); return; }
-      const canView = user.permissions?.viewAllReports || user.role === 'admin' || user.role === 'superadmin';
+      if (scope === 'team' && user.role !== 'admin') { router.replace('/dashboard/reports'); return; }
+      if (user.role === 'user') { router.replace('/dashboard'); return; }
+      if (user.role === 'admin' && scope !== 'team') { router.replace('/dashboard/reports/team'); return; }
+      const canView = user.role === 'admin' || user.role === 'superadmin';
       if (canView) {
         setCurrentUserName(user.name);
+        setCurrentTeamName(user.teamName || '');
         setRole(user.role || '');
         setCanManageReports(user.role === 'superadmin');
         setCanEditReports(user.role === 'admin' || user.role === 'superadmin');
@@ -199,6 +208,7 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
         load();
         api.getReportSettings().then((s) => setVisibleColumns(s.visibleColumns)).catch(() => {});
         api.getFieldEditLocks().then((locks) => setEditLocks(new Map(locks.map((l) => [l.name, l.userOnlyEdit])))).catch(() => {});
+        api.getFields().then((configured) => setFieldDefinitions(configured)).catch(() => {});
         api.getFinalTotalSettings().then((s) => { setFinalTotalLabel(s.label); setFinalTotalIcon(s.icon); setFinalTotalSign(s.sign); }).catch(() => {});
         if (user.role === 'superadmin') {
           api.listUsers().then(setAccounts).catch(() => {});
@@ -206,18 +216,46 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
       } else { router.replace('/dashboard'); }
     }).catch(() => router.replace('/login'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  }, [router, scope]);
+
+  useEffect(() => {
+    // 'focus' and 'visibilitychange' both fire when switching back to this tab;
+    // coalesce them with a timer so we only refetch once per return-to-tab.
+    let pending: ReturnType<typeof setTimeout> | null = null;
+    const refreshOnFocus = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (pending) clearTimeout(pending);
+      pending = setTimeout(() => { pending = null; load(true); }, 150);
+    };
+    // Keep an admin's team view current while it stays open. User saves update the
+    // same team report, so the next refresh shows the new values without a reload.
+    const liveRefresh = scope === 'team'
+      ? window.setInterval(() => {
+          if (document.visibilityState === 'visible') load(true);
+        }, 5000)
+      : null;
+    window.addEventListener('focus', refreshOnFocus);
+    document.addEventListener('visibilitychange', refreshOnFocus);
+    return () => {
+      if (pending) clearTimeout(pending);
+      if (liveRefresh) window.clearInterval(liveRefresh);
+      window.removeEventListener('focus', refreshOnFocus);
+      document.removeEventListener('visibilitychange', refreshOnFocus);
+    };
+    // Reload the current report filters when returning from an entry-save tab/page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, startDate, endDate, scope, teamFilter]);
 
   async function openHistory(entry: Entry) {
     setHistoryEntry(entry);
     setHistoryItems(null);
-    setHistoryError('');
     setHistoryLoading(true);
     try {
       const full = await api.getEntry(entry._id);
       setHistoryItems(full.history || []);
     } catch (err: any) {
-      setHistoryError(err.message || 'Could not load update history');
+      toast.error(err.message || 'Could not load update history');
+      setHistoryItems([]);
     } finally {
       setHistoryLoading(false);
     }
@@ -226,7 +264,6 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
   function closeHistory() {
     setHistoryEntry(null);
     setHistoryItems(null);
-    setHistoryError('');
   }
 
   async function handleDelete() {
@@ -236,22 +273,58 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
       await api.deleteEntry(deleteTarget._id);
       setEntries((prev) => prev.filter((e) => e._id !== deleteTarget._id));
       setDeleteTarget(null);
-    } catch (err: any) { setError(err.message || 'Could not remove entry'); }
+    } catch {
+      // The API client shows the error notification.
+    }
     finally { setDeleting(false); }
   }
 
   function startEdit(entry: Entry) {
+    const savedByName = new Map(entry.fields.map((field) => [field.name, field]));
+    const editableFields: FieldValue[] = fieldDefinitions.length > 0
+      ? fieldDefinitions.map((definition) => {
+          const saved = savedByName.get(definition.name);
+          const boxes = definition.boxNames.map((_, index) => saved?.boxes?.[index] ?? 0);
+          return {
+            name: definition.name,
+            icon: definition.icon || '',
+            boxNames: [...definition.boxNames],
+            boxIcons: [...(definition.boxIcons || [])],
+            boxColors: [...(definition.boxColors || [])],
+            boxFields: definition.boxFields,
+            boxes,
+            details: definition.boxNames.map((_, index) => (
+              saved?.details?.[index]?.length
+                ? saved.details[index]
+                : [blankBoxDetail(boxes[index])]
+            )),
+            calcType: definition.calcType,
+            groupSplit: definition.groupSplit,
+            operator: (saved?.operator as Operator) || '+',
+            locked: computeFieldLocked(
+              role,
+              editLocks.get(definition.name) ?? Boolean(definition.userOnlyEdit),
+            ),
+          };
+        })
+      : entry.fields.map((field) => ({
+          name: field.name,
+          boxNames: [...field.boxNames],
+          boxFields: field.boxFields,
+          boxes: [...field.boxes],
+          details: field.boxes.map((value, index) => (
+            field.details?.[index]?.length ? field.details[index] : [blankBoxDetail(value)]
+          )),
+          calcType: field.calcType,
+          groupSplit: field.groupSplit,
+          operator: (field.operator as Operator) || '+',
+          locked: computeFieldLocked(role, Boolean(editLocks.get(field.name))),
+        }));
+
     setEditing({
       _id: entry._id, name: entry.name,
       date: new Date(entry.date).toISOString().split('T')[0],
-      fields: entry.fields.map((f) => ({
-        name: f.name, boxNames: [...f.boxNames], boxFields: f.boxFields, boxes: [...f.boxes],
-        details: f.boxes.map((value, index) => (
-          f.details?.[index]?.length ? f.details[index] : [blankBoxDetail(value)]
-        )),
-        calcType: f.calcType, groupSplit: f.groupSplit, operator: (f.operator as Operator) || '+',
-        locked: computeFieldLocked(role, Boolean(editLocks.get(f.name))),
-      })),
+      fields: editableFields,
     });
   }
 
@@ -272,8 +345,8 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
   }
   async function handleUpdate() {
     if (!editing) return;
-    if (!editing.name.trim()) { setError('Please enter a name before saving.'); return; }
-    setSaving(true); setError('');
+    if (!editing.name.trim()) { toast.error('Please enter a name before saving.'); return; }
+    setSaving(true);
     try {
       const updated = await api.updateEntry(editing._id, {
         name: editing.name.trim(), date: editing.date,
@@ -281,12 +354,14 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
       });
       setEntries((cur) => cur.map((e) => e._id === editing._id ? { ...e, ...updated } : e));
       setEditing(null);
-    } catch (err: any) { setError(err.message || 'Could not update entry'); }
+    } catch {
+      // The API client shows the error notification.
+    }
     finally { setSaving(false); }
   }
 
   const visibleCols = allColumns.filter((c) => isVisible(c.key));
-  const colSpan = visibleCols.length + (role === 'superadmin' ? 1 : 0) + ((canEditReports || canManageReports) ? 1 : 0);
+  const colSpan = visibleCols.length + ((canEditReports || canManageReports) ? 1 : 0);
 
   return (
     <div className="space-y-6">
@@ -307,16 +382,16 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
           </div>
           <div className="flex flex-wrap gap-2">
             {canManageReportSettings && (
-              <button onClick={() => { setColumnsOpen((o) => !o); setColumnsFeedback(''); }}
+              <button onClick={() => setColumnsOpen((o) => !o)}
                 className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-sm transition hover:bg-white/15">
                 <FiColumns size={16} /> Field
               </button>
             )}
-            <a href={exportUrl({ name, startDate, endDate })}
+            <a href={exportUrl({ name, startDate, endDate, scope, teamName: teamFilter || undefined })}
               className="flex items-center gap-2 rounded-xl bg-emerald-500/90 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(16,185,129,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:-translate-y-0.5 hover:bg-emerald-500">
               <FiDownload size={16} /> Excel
             </a>
-            <a href={exportUrl({ name, startDate, endDate }, 'pdf')}
+            <a href={exportUrl({ name, startDate, endDate, scope, teamName: teamFilter || undefined }, 'pdf')}
               className="flex items-center gap-2 rounded-xl bg-rose-500/90 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(244,63,94,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:-translate-y-0.5 hover:bg-rose-500">
               <FiDownload size={16} /> PDF
             </a>
@@ -340,7 +415,7 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
             </div>
             <button onClick={() => setColumnsOpen(false)} aria-label="Close" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-700"><FiX /></button>
           </div>
-          <p className="mb-3 text-xs text-blue-900/50">Name, Date, {finalTotalLabel}, Added by and Updated by always show. Choose which extra field boxes appear in the table below.</p>
+          <p className="mb-3 text-xs text-blue-900/50">Name, Team, Date, {finalTotalLabel}, Added by and Updated by always show. Choose which extra field boxes appear in the table below.</p>
           <div className="mb-5 flex flex-wrap gap-2">
             {dynamicColumns.length === 0 && <p className="text-sm text-blue-900/40">No extra fields configured yet.</p>}
             {dynamicColumns.map((col) => (
@@ -350,7 +425,6 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
               </label>
             ))}
           </div>
-          {columnsFeedback && <p className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"><FiCheck />{columnsFeedback}</p>}
           <button onClick={saveColumns} disabled={columnsSaving}
             className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:-translate-y-0.5 disabled:opacity-60">
             <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
@@ -386,24 +460,22 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
           </div>
           {role === 'superadmin' && admins.length > 0 && (
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Admin</label>
-              <select value={adminFilter} onChange={(e) => setAdminFilter(e.target.value)} className="rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15">
-                <option value="">All admins</option>
-                {admins.map((a) => (
-                  <option key={a._id} value={a.name}>{a.name}</option>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Team</label>
+              <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} className="rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15">
+                <option value="">All teams</option>
+                {admins.filter((a) => a.teamName).map((a) => (
+                  <option key={a._id} value={a.teamName}>{a.teamName}</option>
                 ))}
               </select>
             </div>
           )}
-          <button onClick={load}
+          <button onClick={() => load()}
             className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,107,196,0.45)] active:translate-y-0">
             <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
             <span className="relative">Filter</span>
           </button>
         </div>
       </div>
-
-      {error && <p className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><FiAlertCircle />{error}</p>}
 
       {/* ── Edit panel ── */}
       {editing && (
@@ -417,8 +489,12 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
             <button onClick={() => setEditing(null)} aria-label="Close editor" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-700"><FiX /></button>
           </div>
           <div className="mb-5 grid gap-4 sm:grid-cols-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-blue-900/65">Name
-              <input value={editing.name} onChange={(e) => setEditing((c) => c && { ...c, name: e.target.value })} className="mt-2 w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm normal-case tracking-normal outline-none focus:border-blue-400" />
+            <label className="text-xs font-semibold uppercase tracking-wider text-blue-900/65">Team report
+              <input
+                value={editing.name}
+                readOnly
+                className="mt-2 w-full cursor-default rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm normal-case tracking-normal outline-none"
+              />
             </label>
             <label className="text-xs font-semibold uppercase tracking-wider text-blue-900/65">Date
               <input type="date" value={editing.date} onChange={(e) => setEditing((c) => c && { ...c, date: e.target.value })} className="mt-2 w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm normal-case tracking-normal outline-none focus:border-blue-400" />
@@ -455,7 +531,6 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
                 {visibleCols.map((col) => (
                   <th key={col.key} className={`px-5 py-3 font-medium ${col.key === 'total' ? 'text-right' : ''}`}>{col.key === 'total' ? finalTotalLabel : col.label}</th>
                 ))}
-                {role === 'superadmin' && <th className="px-5 py-3 font-medium">Admin</th>}
                 {(canEditReports || canManageReports) && <th className="px-5 py-3 font-medium">Actions</th>}
               </tr>
             </thead>
@@ -475,6 +550,14 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
                 <tr key={e._id} className="border-b border-blue-50 transition last:border-0 hover:bg-blue-50/40">
                   {visibleCols.map((col) => {
                     if (col.key === 'name') return <td key={col.key} className="px-5 py-4 font-medium text-blue-950">{e.name}</td>;
+                    if (col.key === 'team') return (
+                      <td key={col.key} className="px-5 py-3">
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
+                          <FiShield size={11} />
+                          {e.teamName || 'Legacy / Unassigned'}
+                        </span>
+                      </td>
+                    );
                     if (col.key === 'date') return (
                       <td key={col.key} className="whitespace-nowrap px-5 py-3 font-mono text-blue-900/60">
                         <span className={wasEdited(e) ? 'inline-flex items-center gap-2 rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800' : ''} title={wasEdited(e) ? `Updated ${new Date(e.updatedAt).toLocaleString()}` : undefined}>
@@ -518,21 +601,23 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
                       </td>
                     );
                   })}
-                  {role === 'superadmin' && (
-                    <td className="px-5 py-3 text-blue-900/50">
-                      <span className="inline-flex items-center gap-1.5">
-                        <FiShield size={11} className="text-blue-900/30" />
-                        {resolveOwningAdminName(e) || '—'}
-                      </span>
-                    </td>
-                  )}
                   {(canEditReports || canManageReports) && (
                     <td className="px-5 py-3">
                       <div className="flex items-center justify-end gap-1">
                         {canEditReports && (
-                          <button onClick={() => startEdit(e)} aria-label="Edit" className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50">
-                            <FiEdit2 size={14} />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => router.push(`/dashboard/entry/edit/${e._id}`)}
+                              aria-label="Open shared entry page"
+                              title="Open shared entry page"
+                              className="rounded-lg p-2 text-emerald-600 transition hover:bg-emerald-50"
+                            >
+                              <FiExternalLink size={14} />
+                            </button>
+                            <button onClick={() => startEdit(e)} aria-label="Quick edit" title="Quick edit" className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50">
+                              <FiEdit2 size={14} />
+                            </button>
+                          </>
                         )}
                         {canManageReports && (
                           <button onClick={() => setDeleteTarget(e)} aria-label="Delete" className="rounded-lg p-2 text-red-500 transition hover:bg-red-50">
@@ -604,15 +689,11 @@ export default function ReportsView({ roleFilter }: { roleFilter?: 'admin' | 'us
               </div>
             )}
 
-            {historyError && (
-              <p className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><FiAlertCircle />{historyError}</p>
-            )}
-
-            {!historyLoading && !historyError && historyItems && historyItems.length === 0 && (
+            {!historyLoading && historyItems && historyItems.length === 0 && (
               <p className="py-8 text-center text-sm text-blue-900/40">No recorded changes yet.</p>
             )}
 
-            {!historyLoading && !historyError && historyItems && historyItems.length > 0 && (
+            {!historyLoading && historyItems && historyItems.length > 0 && (
               <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
                 <p className="text-xs text-blue-900/50">Showing the last {historyItems.length} update{historyItems.length === 1 ? '' : 's'}, most recent first.</p>
                 {historyItems.map((item, index) => (

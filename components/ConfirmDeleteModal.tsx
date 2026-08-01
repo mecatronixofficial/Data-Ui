@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FiAlertCircle, FiAlertTriangle, FiTrash2, FiX } from 'react-icons/fi';
+import { FiAlertTriangle, FiTrash2, FiX } from 'react-icons/fi';
 
 export default function ConfirmDeleteModal({
   title,
@@ -15,15 +15,13 @@ export default function ConfirmDeleteModal({
   onConfirm: () => Promise<void>;
 }) {
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState('');
 
   async function handleConfirm() {
-    setError('');
     setDeleting(true);
     try {
       await onConfirm();
-    } catch (err: any) {
-      setError(err.message || 'Could not complete this action');
+    } catch {
+      // The API client shows the error notification.
       setDeleting(false);
     }
   }
@@ -55,12 +53,6 @@ export default function ConfirmDeleteModal({
 
         <div className="px-6 py-5">
           <p className="text-sm text-blue-900/70">{message}</p>
-
-          {error && (
-            <p className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-              <FiAlertCircle size={13} />{error}
-            </p>
-          )}
 
           <div className="mt-6 flex justify-end gap-3 border-t border-blue-100 pt-4">
             <button type="button" onClick={onClose} disabled={deleting}

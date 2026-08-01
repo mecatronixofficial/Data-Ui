@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { FiAlertCircle, FiCalendar, FiCheck, FiClock, FiRefreshCw, FiUser, FiX } from 'react-icons/fi';
 import { type BoxDetail } from '@/components/TallyBox';
 import { type Operator } from '@/components/OperatorToggle';
 import DynamicFieldsForm, { FinalTotalCard, type FieldValue } from '@/components/DynamicFieldsForm';
 import { api, blankBoxDetail, computeFieldLocked, type BoxFieldDef, type FinalTotalSign } from '@/lib/api';
+import { toast } from '@/lib/toast';
 
 type FieldConfig = {
   name: string;
@@ -19,6 +20,45 @@ type FieldConfig = {
   groupSplit: number;
   locked?: boolean;
 };
+
+function todayInputValue() {
+  const today = new Date();
+  const localTime = new Date(today.getTime() - today.getTimezoneOffset() * 60_000);
+  return localTime.toISOString().slice(0, 10);
+}
+
+function dateInputValue(value: unknown) {
+  const match = typeof value === 'string' ? value.match(/^\d{4}-\d{2}-\d{2}/) : null;
+  return match?.[0] || todayInputValue();
+}
+
+function normalizeOperator(value: unknown): Operator {
+  return value === '-' ? '-' : '+';
+}
+
+function fieldConfigFromApi(raw: any, index: number, role: string): FieldConfig {
+  if (!raw || !Array.isArray(raw.boxNames) || raw.boxNames.length === 0) {
+    throw new Error(`Field ${index + 1} has an invalid box configuration.`);
+  }
+
+  const boxNames: string[] = raw.boxNames.map((name: unknown, boxIndex: number) =>
+    typeof name === 'string' && name.trim() ? name : `Box ${boxIndex + 1}`,
+  );
+
+  return {
+    name: typeof raw.name === 'string' && raw.name.trim() ? raw.name : `Field ${index + 1}`,
+    icon: typeof raw.icon === 'string' ? raw.icon : '',
+    boxNames,
+    boxIcons: Array.isArray(raw.boxIcons) ? boxNames.map((_, i) => raw.boxIcons[i] || '') : undefined,
+    boxColors: Array.isArray(raw.boxColors) ? boxNames.map((_, i) => raw.boxColors[i] || '') : undefined,
+    boxFields: Array.isArray(raw.boxFields)
+      ? boxNames.map((_, i) => (Array.isArray(raw.boxFields[i]) ? raw.boxFields[i] : []))
+      : undefined,
+    calcType: raw.calcType === 'grouped' ? 'grouped' : 'signed',
+    groupSplit: Number.isInteger(raw.groupSplit) ? raw.groupSplit : 0,
+    locked: computeFieldLocked(role, Boolean(raw.userOnlyEdit)),
+  };
+}
 
 function blankField(config: FieldConfig): FieldValue {
   return {
@@ -37,6 +77,41 @@ function blankField(config: FieldConfig): FieldValue {
   };
 }
 
+function fieldFromSaved(config: FieldConfig, saved: any): FieldValue {
+  const savedBoxes = Array.isArray(saved?.boxes) ? saved.boxes : [];
+  const savedDetails = Array.isArray(saved?.details) ? saved.details : [];
+  const boxes = config.boxNames.map((_, index) => Number(savedBoxes[index]) || 0);
+  return {
+    name: config.name,
+    icon: config.icon,
+    boxNames: [...config.boxNames],
+    boxIcons: config.boxIcons ? [...config.boxIcons] : undefined,
+    boxColors: config.boxColors ? [...config.boxColors] : undefined,
+    boxFields: config.boxFields ? [...config.boxFields] : undefined,
+    boxes,
+    details: config.boxNames.map((_, index) =>
+      Array.isArray(savedDetails[index]) && savedDetails[index].length
+        ? savedDetails[index]
+        : savedBoxes[index] !== undefined
+          ? [blankBoxDetail(boxes[index])]
+          : [],
+    ),
+    calcType: config.calcType,
+    groupSplit: config.groupSplit,
+    operator: normalizeOperator(saved?.operator),
+    locked: config.locked,
+  };
+}
+
+function fieldsFromSavedEntry(configs: FieldConfig[], entry: any) {
+  const savedFields = Array.isArray(entry?.fields) ? entry.fields : [];
+  const savedByName = new Map(savedFields.map((field: any) => [field?.name, field]));
+  return configs.map((config) => {
+    const saved = savedByName.get(config.name);
+    return saved ? fieldFromSaved(config, saved) : blankField(config);
+  });
+}
+
 export default function NewEntryPage() {
   const params = useParams<{ id?: string }>();
   const router = useRouter();
@@ -45,7 +120,7 @@ export default function NewEntryPage() {
   const [role, setRole] = useState('');
   const [name, setName] = useState('');
   const [defaultName, setDefaultName] = useState('');
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayInputValue);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -58,113 +133,140 @@ export default function NewEntryPage() {
   const [finalTotalLabel, setFinalTotalLabel] = useState('Final Total');
   const [finalTotalIcon, setFinalTotalIcon] = useState('');
   const [finalTotalSign, setFinalTotalSign] = useState<FinalTotalSign>('add');
-  // Regular users only ever have one entry (their name is the record's unique
-  // name). When it already exists we load its saved values here and switch
-  // handleSave from create → update, instead of colliding on the name.
+  // One canonical report per team. The admin and every assigned user load and
+  // update this same id; role locks decide which fields each person may change.
   const [myEntryId, setMyEntryId] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [feedback, setFeedback] = useState<'saved' | 'canceled' | null>(null);
-  const [returnToReports, setReturnToReports] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [loadingEntry, setLoadingEntry] = useState(true);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [dirty, setDirty] = useState(false);
+  const [syncVersion, setSyncVersion] = useState(0);
+  const lastRemoteVersion = useRef('');
 
   useEffect(() => {
     if (editingId) return;
-    Promise.all([api.me(), api.getMyFields(), api.myEntries(), api.getFieldEditLocks()])
-      .then(([user, myFields, myEntries, editLocks]) => {
+    setLoadingEntry(true);
+    setLoadError('');
+    const activeEntryRequest = api.getActiveEntry().catch(async (err: any) => {
+      if (err?.status === 401) throw err;
+      // Compatibility with an older backend that does not yet expose /entries/active.
+      if (err?.status === 404) {
+        const entries = await api.myEntries();
+        return entries[0] || null;
+      }
+      throw err;
+    });
+
+    Promise.all([api.me(), api.getFields(), activeEntryRequest])
+      .then(([user, myFields, activeEntry]) => {
         if (user.role === 'superadmin') {
           router.replace('/dashboard');
           return;
         }
-        const lockByName = new Map(editLocks.map((l) => [l.name, l.userOnlyEdit]));
-        const configs: FieldConfig[] = myFields.map((f: any) => ({
-          name: f.name,
-          icon: f.icon,
-          boxNames: f.boxNames,
-          boxIcons: f.boxIcons,
-          boxColors: f.boxColors,
-          boxFields: f.boxFields,
-          calcType: f.calcType,
-          groupSplit: f.groupSplit,
-          locked: computeFieldLocked(user.role, Boolean(lockByName.get(f.name))),
-        }));
+        if (!Array.isArray(myFields)) {
+          throw new Error('The fields service returned an invalid response. Restart or redeploy the backend.');
+        }
+        const configs: FieldConfig[] = myFields.map((field: any, index: number) =>
+          fieldConfigFromApi(field, index, user.role),
+        );
         setFieldConfigs(configs);
         setDefaultName(user.name);
         setRole(user.role || '');
+        const teamReportName = typeof user.teamName === 'string' && user.teamName.trim()
+          ? user.teamName
+          : user.name;
 
-        // This user already has a saved record — load its values instead of a
-        // blank form, and remember its id so Save updates it rather than
-        // trying (and failing) to create a second entry under the same name.
-        const existing = myEntries?.[0];
+        const existing = activeEntry;
         if (existing) {
-          setMyEntryId(existing._id);
-          setName(existing.name);
-          setDate(new Date(existing.date).toISOString().split('T')[0]);
-          const existingByName = new Map(existing.fields.map((f: any) => [f.name, f]));
-          setFields(configs.map((config) => {
-            const saved: any = existingByName.get(config.name);
-            if (!saved) return blankField(config);
-            return {
-              name: config.name,
-              icon: config.icon,
-              boxNames: [...config.boxNames],
-              boxIcons: config.boxIcons ? [...config.boxIcons] : undefined,
-              boxColors: config.boxColors ? [...config.boxColors] : undefined,
-              boxFields: config.boxFields ? [...config.boxFields] : undefined,
-              boxes: [...saved.boxes],
-              details: saved.boxes.map((value: number, index: number) =>
-                saved.details?.[index]?.length ? saved.details[index] : [blankBoxDetail(value)],
-              ),
-              calcType: config.calcType,
-              groupSplit: config.groupSplit,
-              operator: (saved.operator as Operator) || '+',
-              locked: config.locked,
-            };
-          }));
+          setMyEntryId(typeof existing._id === 'string' ? existing._id : null);
+          setName(typeof existing.name === 'string' && existing.name.trim() ? existing.name : teamReportName);
+          setDate(dateInputValue(existing.date));
+          setFields(fieldsFromSavedEntry(configs, existing));
+          lastRemoteVersion.current = String(existing.updatedAt || existing.__v || '');
         } else {
-          setName(user.name);
+          setName(teamReportName);
           setFields(configs.map(blankField));
         }
+        setDirty(false);
       })
-      .catch(() => router.replace('/login'))
+      .catch((err: any) => {
+        if (err?.status === 401) {
+          router.replace('/login');
+          return;
+        }
+        setLoadError(err?.message || 'Could not load the entry page');
+      })
       .finally(() => setLoadingEntry(false));
-  }, [editingId, router]);
+  }, [editingId, router, reloadToken]);
 
   useEffect(() => {
     if (!editingId) return;
+    setLoadingEntry(true);
+    setLoadError('');
     api.me()
-      .then((user) => {
-        if (user.role !== 'superadmin') {
+      .then(async (user) => {
+        if (user.role !== 'superadmin' && user.role !== 'admin' && user.role !== 'user') {
           router.replace('/dashboard');
           return null;
         }
         setDefaultName(user.name);
         setRole(user.role || '');
-        return api.getEntry(editingId);
+        const [entry, configuredFields] = await Promise.all([
+          api.getEntry(editingId),
+          api.getFields(),
+        ]);
+        return { user, entry, configuredFields };
       })
-      .then((entry) => {
-        if (!entry) return;
-        setName(entry.name);
-        setDate(new Date(entry.date).toISOString().split('T')[0]);
-        const loadedFields: FieldValue[] = entry.fields.map((f: any) => ({
-          name: f.name,
-          boxNames: [...f.boxNames],
-          boxFields: f.boxFields,
-          boxes: [...f.boxes],
-          details: f.boxes.map((value: number, index: number) =>
-            f.details?.[index]?.length ? f.details[index] : [blankBoxDetail(value)],
-          ),
-          calcType: f.calcType,
-          groupSplit: f.groupSplit,
-          operator: (f.operator as Operator) || '+',
-        }));
-        setFieldConfigs(loadedFields.map((f) => ({ name: f.name, boxNames: f.boxNames, boxFields: f.boxFields, calcType: f.calcType, groupSplit: f.groupSplit })));
-        setFields(loadedFields);
+      .then((result) => {
+        if (!result) return;
+        const { user, entry, configuredFields } = result;
+        if (!Array.isArray(entry.fields)) {
+          throw new Error('This saved entry has invalid field data.');
+        }
+        if (!Array.isArray(configuredFields)) {
+          throw new Error('The fields service returned an invalid response.');
+        }
+        setName(typeof entry.name === 'string' ? entry.name : '');
+        setDate(dateInputValue(entry.date));
+        const configs = configuredFields.map((field: any, index: number) =>
+          fieldConfigFromApi(field, index, user.role),
+        );
+        setFieldConfigs(configs);
+        setFields(fieldsFromSavedEntry(configs, entry));
+        setMyEntryId(typeof entry._id === 'string' ? entry._id : editingId);
+        lastRemoteVersion.current = String(entry.updatedAt || entry.__v || '');
+        setDirty(false);
       })
-      .catch((err: any) => setError(err.message || 'Could not load entry'))
+      .catch((err: any) => setLoadError(err.message || 'Could not load entry'))
       .finally(() => setLoadingEntry(false));
-  }, [editingId, router]);
+  }, [editingId, router, reloadToken]);
+
+  const sharedEntryId = editingId || myEntryId;
+
+  useEffect(() => {
+    if (!sharedEntryId || loadingEntry || dirty || saving) return;
+    const refresh = async () => {
+      try {
+        const entry = await api.getEntry(sharedEntryId);
+        const remoteVersion = String(entry.updatedAt || entry.__v || '');
+        if (remoteVersion && remoteVersion === lastRemoteVersion.current) return;
+        setName((currentName) =>
+          typeof entry.name === 'string' ? entry.name : currentName,
+        );
+        setDate(dateInputValue(entry.date));
+        setFields(fieldsFromSavedEntry(fieldConfigs, entry));
+        lastRemoteVersion.current = remoteVersion;
+        setSyncVersion((version) => version + 1);
+      } catch {
+        // A transient refresh failure must not interrupt local work. Explicit
+        // loads and saves still surface actionable errors to the user.
+      }
+    };
+    const timer = window.setInterval(refresh, 5000);
+    return () => window.clearInterval(timer);
+  }, [sharedEntryId, loadingEntry, dirty, saving, fieldConfigs]);
 
   useEffect(() => {
     api.getFinalTotalSettings()
@@ -177,7 +279,9 @@ export default function NewEntryPage() {
   }, []);
 
   function updateBox(fieldIndex: number, boxIndex: number, value: number) {
+    setDirty(true);
     setFields((prev) => {
+      if (!prev[fieldIndex] || boxIndex < 0 || boxIndex >= prev[fieldIndex].boxes.length) return prev;
       const next = [...prev];
       const boxes = [...next[fieldIndex].boxes];
       boxes[boxIndex] = value;
@@ -187,7 +291,9 @@ export default function NewEntryPage() {
   }
 
   function updateDetails(fieldIndex: number, boxIndex: number, details: BoxDetail[]) {
+    setDirty(true);
     setFields((prev) => {
+      if (!prev[fieldIndex] || boxIndex < 0 || boxIndex >= prev[fieldIndex].details.length) return prev;
       const next = [...prev];
       const fieldDetails = [...next[fieldIndex].details];
       fieldDetails[boxIndex] = details;
@@ -196,19 +302,16 @@ export default function NewEntryPage() {
     });
   }
 
-  function resetForm() {
-    setName(defaultName);
-    setDate(new Date().toISOString().split('T')[0]);
-    setFields(fieldConfigs.map(blankField));
-    setError('');
-  }
-
   function resetFieldValues() {
+    setDirty(true);
     setFields(fieldConfigs.map(blankField));
   }
 
   function resetSingleField(fieldIndex: number) {
+    if (!fieldConfigs[fieldIndex]) return;
+    setDirty(true);
     setFields((prev) => {
+      if (!prev[fieldIndex]) return prev;
       const next = [...prev];
       next[fieldIndex] = blankField(fieldConfigs[fieldIndex]);
       return next;
@@ -216,25 +319,25 @@ export default function NewEntryPage() {
   }
 
   function handleCancel() {
-    if (!isEditing) resetForm();
-    setReturnToReports(isEditing);
-    setFeedback('canceled');
-  }
-
-  function closeFeedback() {
-    setFeedback(null);
-    if (returnToReports) router.push('/dashboard/reports');
+    if (!isEditing) {
+      window.location.reload();
+      return;
+    }
+    router.push(role === 'admin' ? '/dashboard/reports/team' : role === 'superadmin' ? '/dashboard/reports' : '/dashboard');
   }
 
   async function handleSave() {
-    setError('');
     const normalizedName = name.trim();
     if (!normalizedName) {
-      setError('Please enter a name before saving.');
+      toast.error('Please enter a name before saving.');
+      return;
+    }
+    if (!date) {
+      toast.error('Please select a date before saving.');
       return;
     }
     if (fields.length === 0) {
-      setError('No fields are configured yet. Contact your admin.');
+      toast.error('No fields are configured yet. Contact your admin.');
       return;
     }
     setSaving(true);
@@ -250,24 +353,43 @@ export default function NewEntryPage() {
         })),
         fieldOperators: fields.length > 1 ? Array(fields.length - 1).fill('+') : [],
       };
+      let savedEntry: any;
       if (editingId) {
-        await api.updateEntry(editingId, payload);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        setReturnToReports(true);
-        setFeedback('saved');
+        savedEntry = await api.updateEntry(editingId, payload);
+        lastRemoteVersion.current = String(savedEntry?.updatedAt || savedEntry?.__v || '');
+        if (Array.isArray(savedEntry?.fields)) {
+          setFields(fieldsFromSavedEntry(fieldConfigs, savedEntry));
+        }
+        setDirty(false);
+        router.push(role === 'admin' ? '/dashboard/reports/team' : role === 'superadmin' ? '/dashboard/reports' : '/dashboard');
         return;
       }
       if (myEntryId) {
-        await api.updateEntry(myEntryId, payload);
+        savedEntry = await api.updateActiveEntry(myEntryId, payload);
       } else {
-        const created = await api.createEntry(payload);
-        setMyEntryId(created._id);
+        try {
+          savedEntry = await api.createEntry(payload);
+        } catch (createError: any) {
+          if (createError?.status !== 409) throw createError;
+          // A second tab/request may have created the canonical report after
+          // this page loaded. Recover it and save instead of showing a conflict.
+          const activeEntry = await api.getActiveEntry();
+          if (!activeEntry?._id) throw createError;
+          savedEntry = await api.updateActiveEntry(activeEntry._id, payload);
+        }
+        setMyEntryId(savedEntry._id);
       }
+      lastRemoteVersion.current = String(savedEntry?.updatedAt || savedEntry?.__v || '');
+      if (typeof savedEntry?.name === 'string' && savedEntry.name.trim()) {
+        setName(savedEntry.name);
+      }
+      if (Array.isArray(savedEntry?.fields)) {
+        setFields(fieldsFromSavedEntry(fieldConfigs, savedEntry));
+      }
+      setDirty(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      setReturnToReports(false);
-      setFeedback('saved');
-    } catch (err: any) {
-      setError(err.message || 'Could not save entry');
+    } catch {
+      // The API client shows the error notification.
     } finally {
       setSaving(false);
     }
@@ -288,6 +410,36 @@ export default function NewEntryPage() {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="flex min-h-[65vh] items-center justify-center">
+        <section role="alert" className="w-full max-w-lg rounded-3xl border border-red-200 bg-white p-8 text-center shadow-[0_24px_70px_rgba(127,29,29,0.12)]">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+            <FiAlertCircle size={24} />
+          </span>
+          <h1 className="mt-4 font-display text-xl font-semibold text-blue-950">Could not load the entry page</h1>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-red-700/75">{loadError}</p>
+          <div className="mt-6 flex justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setReloadToken((value) => value + 1)}
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              <FiRefreshCw size={15} /> Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="rounded-xl border border-blue-200 bg-white px-5 py-2.5 text-sm font-semibold text-blue-800 hover:bg-blue-50"
+            >
+              Dashboard
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3 pb-4">
       <header className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-2 shadow-[0_8px_28px_rgba(7,39,71,0.07)]">
@@ -298,12 +450,12 @@ export default function NewEntryPage() {
               <FiUser size={15} aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[7px] font-semibold uppercase tracking-[0.17em] text-blue-900/40">Record name</span>
+              <span className="block text-[7px] font-semibold uppercase tracking-[0.17em] text-blue-900/40">Team report</span>
               <input
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                readOnly
                 placeholder="Enter a record name"
-                className="mt-0.5 w-full border-0 bg-transparent p-0 text-sm font-semibold text-blue-950 outline-none placeholder:font-normal placeholder:text-blue-900/25"
+                className="mt-0.5 w-full cursor-default border-0 bg-transparent p-0 text-sm font-semibold text-blue-950 outline-none placeholder:font-normal placeholder:text-blue-900/25"
               />
             </span>
           </label>
@@ -323,17 +475,20 @@ export default function NewEntryPage() {
               <span className="min-w-[7rem]">
                 <span className="block text-[6px] font-semibold uppercase tracking-[0.16em] text-blue-900/35">Date</span>
                 <span className="block font-mono text-[11px] font-semibold leading-tight text-blue-950">
-                  {new Date(`${date}T00:00:00`).toLocaleDateString([], {
+                  {date ? new Date(`${date}T00:00:00`).toLocaleDateString([], {
                     day: '2-digit',
                     month: 'short',
                     year: 'numeric',
-                  })}
+                  }) : 'Select date'}
                 </span>
               </span>
               <input
                 type="date"
                 value={date}
-                onChange={(event) => setDate(event.target.value)}
+                onChange={(event) => {
+                  setDate(event.target.value);
+                  setDirty(true);
+                }}
                 aria-label="Entry date"
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />
@@ -351,7 +506,7 @@ export default function NewEntryPage() {
         </div>
       </header>
 
-      <div className="flex flex-wrap justify-end gap-2">
+      {fields.length > 0 && <div className="flex flex-wrap justify-end gap-2">
         {role === 'superadmin' && (
           <button
             type="button"
@@ -379,7 +534,7 @@ export default function NewEntryPage() {
             ? (saving ? 'Updating...' : 'Update')
             : (saving ? 'Saving...' : 'Save')}
         </button>
-      </div>
+      </div>}
 
 
       {fields.length === 0 ? (
@@ -389,14 +544,23 @@ export default function NewEntryPage() {
           </div>
           <h2 className="mt-4 font-display text-lg font-semibold text-amber-950">No fields configured</h2>
           <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-amber-800/70">
-            Ask a superadmin to configure the entry fields before you begin.
+            Ask the Super Admin to add fields on the Fields page.
           </p>
+          <button
+            type="button"
+            onClick={() => setReloadToken((value) => value + 1)}
+            className="mx-auto mt-4 flex items-center gap-2 rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"
+          >
+            <FiRefreshCw size={14} />
+            Retry loading
+          </button>
         </section>
-      ) : (
+      ) : fields.length > 0 ? (
         <div className="space-y-4">
           <section>
             <DynamicFieldsForm
               fields={fields}
+              syncVersion={syncVersion}
               currentUserName={defaultName}
               canReset={role === 'superadmin'}
               onBoxChange={updateBox}
@@ -411,61 +575,8 @@ export default function NewEntryPage() {
             sign={finalTotalSign}
           />
         </div>
-      )}
+      ) : null}
 
-      {error && (
-        <div role="alert" className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-[0_8px_24px_rgba(185,28,28,0.08)]">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
-            <FiAlertCircle size={16} />
-          </span>
-          <div>
-            <p className="font-semibold">Unable to save this entry</p>
-            <p className="mt-0.5 text-xs text-red-700/75">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {feedback && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/60 p-4 backdrop-blur-md"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="entry-feedback-title"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeFeedback();
-          }}
-        >
-          <div className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-white/60 bg-white p-6 text-center shadow-[0_30px_90px_rgba(7,39,71,0.35)]">
-            <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 ${feedback === 'saved'
-                ? 'bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-300'
-                : 'bg-gradient-to-r from-amber-500 via-amber-300 to-orange-300'
-              }`} />
-            <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${feedback === 'saved'
-                ? 'bg-blue-950 text-white shadow-[0_12px_28px_rgba(7,39,71,0.25)]'
-                : 'bg-amber-100 text-amber-700 shadow-[0_12px_28px_rgba(120,53,15,0.14)]'
-              }`}>
-              {feedback === 'saved' ? <FiCheck size={24} /> : <FiX size={24} />}
-            </div>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-blue-600/55">
-              {feedback === 'saved' ? 'All done' : 'Action canceled'}
-            </p>
-            <h2 id="entry-feedback-title" className="mt-1 font-display text-xl font-semibold text-blue-950">
-              {feedback === 'saved' ? 'Entry saved successfully' : 'Changes discarded'}
-            </h2>
-            <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-blue-900/55">
-              {feedback === 'saved'
-                ? 'Your latest values are safely stored and ready for reporting.'
-                : 'No new changes were saved to this entry.'}
-            </p>
-            <button
-              onClick={closeFeedback}
-              className="mt-6 w-full rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,107,196,0.32)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(0,107,196,0.4)]"
-            >
-              {returnToReports ? 'Return to reports' : 'OK'}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

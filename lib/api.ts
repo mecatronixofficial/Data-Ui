@@ -1,6 +1,28 @@
+import { showToast } from './toast';
+
 const BASE = '/api';
 
-async function request(path: string, options: RequestInit = {}) {
+type RequestNotifications = {
+  success?: string;
+  successTitle?: string;
+  error?: boolean;
+};
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
+async function request(
+  path: string,
+  options: RequestInit = {},
+  notifications: RequestNotifications = {},
+) {
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     credentials: 'include',
@@ -18,67 +40,89 @@ async function request(path: string, options: RequestInit = {}) {
     } catch {
       // ignore
     }
-    throw new Error(Array.isArray(message) ? message.join(', ') : message);
+    const normalizedMessage = Array.isArray(message) ? message.join(', ') : message;
+    const method = (options.method || 'GET').toUpperCase();
+    if (notifications.error ?? method !== 'GET') {
+      showToast({ message: normalizedMessage, tone: 'error', duration: 6000 });
+    }
+    throw new ApiError(normalizedMessage, res.status);
   }
 
   const contentType = res.headers.get('content-type') || '';
+  let result: any = res;
   if (contentType.includes('application/json')) {
-    return res.json();
+    result = await res.json();
   }
-  return res;
+  if (notifications.success) {
+    showToast({
+      message: notifications.success,
+      title: notifications.successTitle,
+      tone: 'success',
+    });
+  }
+  return result;
 }
 
 export const api = {
   login: (email: string, password: string) =>
-    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
-  logout: () => request('/auth/logout', { method: 'POST' }),
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }, { success: 'You are now signed in.', successTitle: 'Welcome back' }),
+  logout: () => request('/auth/logout', { method: 'POST' }, { success: 'You have been signed out.' }),
   me: () => request('/auth/me'),
   updateProfile: (payload: { name?: string; email?: string }) =>
-    request('/auth/me', { method: 'PUT', body: JSON.stringify(payload) }),
+    request('/auth/me', { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Your profile was updated.' }),
   changePassword: (payload: { currentPassword: string; newPassword: string }) =>
-    request('/auth/me/password', { method: 'PUT', body: JSON.stringify(payload) }),
+    request('/auth/me/password', { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Your password was updated.' }),
 
   createEntry: (payload: any) =>
-    request('/entries', { method: 'POST', body: JSON.stringify(payload) }),
+    request('/entries', { method: 'POST', body: JSON.stringify(payload) }, { success: 'Team report saved. Your values will remain available.' }),
   updateEntry: (id: string, payload: any) =>
-    request(`/entries/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    request(`/entries/${id}`, { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Team report updated.' }),
+  updateActiveEntry: (id: string, payload: any) =>
+    request(`/entries/active/${id}`, { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Team report saved. Your values will remain available.' }),
   myEntries: () => request('/entries/me'),
+  getActiveEntry: () => request('/entries/active', { cache: 'no-store' }, { error: false }),
   getEntry: (id: string) => request(`/entries/${id}`),
-  allEntries: (params: { name?: string; startDate?: string; endDate?: string }) => {
+  allEntries: (params: {
+    name?: string;
+    startDate?: string;
+    endDate?: string;
+    scope?: 'mine' | 'team' | 'all';
+    ownerRole?: 'admin' | 'user';
+    teamName?: string;
+  }) => {
     const qs = new URLSearchParams(
       Object.entries(params).filter(([, v]) => !!v) as [string, string][],
     ).toString();
-    return request(`/entries${qs ? `?${qs}` : ''}`);
+    return request(`/entries${qs ? `?${qs}` : ''}`, { cache: 'no-store' });
   },
-  deleteEntry: (id: string) => request(`/entries/${id}`, { method: 'DELETE' }),
+  deleteEntry: (id: string) => request(`/entries/${id}`, { method: 'DELETE' }, { success: 'Team report removed.' }),
 
   listUsers: () => request('/users'),
   createUser: (payload: any) =>
-    request('/users', { method: 'POST', body: JSON.stringify(payload) }),
-  updateAccountProfile: (id: string, payload: { name?: string; email?: string }) =>
-    request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    request('/users', { method: 'POST', body: JSON.stringify(payload) }, { success: `${payload?.role === 'admin' ? 'Admin' : 'User'} account created.` }),
+  updateAccountProfile: (id: string, payload: { name?: string; email?: string; teamName?: string }) =>
+    request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Account profile updated.' }),
   resetAccountPassword: (id: string, password: string) =>
-    request(`/users/${id}/password`, { method: 'PUT', body: JSON.stringify({ password }) }),
+    request(`/users/${id}/password`, { method: 'PUT', body: JSON.stringify({ password }) }, { success: 'Account password updated.' }),
   setAccountStatus: (id: string, isActive: boolean) =>
-    request(`/users/${id}/status`, { method: 'PUT', body: JSON.stringify({ isActive }) }),
-  deleteUser: (id: string) => request(`/users/${id}`, { method: 'DELETE' }),
+    request(`/users/${id}/status`, { method: 'PUT', body: JSON.stringify({ isActive }) }, { success: `Account ${isActive ? 'activated' : 'deactivated'}.` }),
+  deleteUser: (id: string) => request(`/users/${id}`, { method: 'DELETE' }, { success: 'Account removed.' }),
 
   getReportSettings: () => request('/report-settings'),
   updateReportSettings: (visibleColumns: string[]) =>
-    request('/report-settings', { method: 'PUT', body: JSON.stringify({ visibleColumns }) }),
+    request('/report-settings', { method: 'PUT', body: JSON.stringify({ visibleColumns }) }, { success: 'Report columns saved.' }),
 
   getFields: () => request('/fields'),
-  getMyFields: () => request('/fields/mine'),
   getFieldEditLocks: (): Promise<{ name: string; userOnlyEdit: boolean }[]> => request('/fields/edit-locks'),
-  createField: (payload: { name: string; order?: number; boxNames: string[]; icon?: string; boxIcons?: string[]; boxColors?: string[]; boxFields?: BoxFieldDef[][]; visibleUserIds?: string[]; userOnlyEdit?: boolean }) =>
-    request('/fields', { method: 'POST', body: JSON.stringify(payload) }),
-  updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; calcType?: string; groupSplit?: number; icon?: string; boxIcons?: string[]; boxColors?: string[]; boxFields?: BoxFieldDef[][]; visibleUserIds?: string[]; userOnlyEdit?: boolean }) =>
-    request(`/fields/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
-  deleteField: (id: string) => request(`/fields/${id}`, { method: 'DELETE' }),
+  createField: (payload: { name: string; order?: number; boxNames: string[]; icon?: string; boxIcons?: string[]; boxColors?: string[]; boxFields?: BoxFieldDef[][]; userOnlyEdit?: boolean }) =>
+    request('/fields', { method: 'POST', body: JSON.stringify(payload) }, { success: 'Field added.' }),
+  updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; calcType?: string; groupSplit?: number; icon?: string; boxIcons?: string[]; boxColors?: string[]; boxFields?: BoxFieldDef[][]; userOnlyEdit?: boolean }) =>
+    request(`/fields/${id}`, { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Field changes saved.' }),
+  deleteField: (id: string) => request(`/fields/${id}`, { method: 'DELETE' }, { success: 'Field removed.' }),
 
   getFinalTotalSettings: (): Promise<{ label: string; icon: string; sign: FinalTotalSign }> => request('/fields/final-total-settings'),
   updateFinalTotalSettings: (payload: { label: string; icon?: string; sign?: FinalTotalSign }) =>
-    request('/fields/final-total-settings', { method: 'PUT', body: JSON.stringify(payload) }),
+    request('/fields/final-total-settings', { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Final total settings saved.' }),
 };
 
 // One inner-field column of a box's detail table (see Field.boxFields on the backend).
@@ -122,7 +166,14 @@ export function computeFieldLocked(role: string, userOnlyEdit: boolean) {
   return false;
 }
 
-export function exportUrl(params: { name?: string; startDate?: string; endDate?: string }, format: 'xlsx' | 'pdf' = 'xlsx') {
+export function exportUrl(params: {
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+  scope?: 'mine' | 'team' | 'all';
+  ownerRole?: 'admin' | 'user';
+  teamName?: string;
+}, format: 'xlsx' | 'pdf' = 'xlsx') {
   const qs = new URLSearchParams(
     Object.entries(params).filter(([, v]) => !!v) as [string, string][],
   ).toString();

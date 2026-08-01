@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiAlertCircle, FiCheckCircle, FiEdit2, FiKey, FiPower, FiTrash2, FiUserPlus, FiUsers } from 'react-icons/fi';
+import { FiEdit2, FiKey, FiPower, FiTrash2, FiUserPlus, FiUsers } from 'react-icons/fi';
 import { api } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import EditAccountModal from '@/components/EditAccountModal';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 
-type AccountRow = { _id: string; name: string; email: string; role: string; assignedAdminId?: string | null; isActive?: boolean };
+type AccountRow = { _id: string; name: string; email: string; role: string; teamName?: string; assignedAdminId?: string | null; isActive?: boolean };
 
 export default function UsersPage() {
   const router = useRouter();
@@ -18,8 +19,6 @@ export default function UsersPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [assignedAdminId, setAssignedAdminId] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AccountRow | null>(null);
@@ -34,7 +33,7 @@ export default function UsersPage() {
       setUsers(all.filter((u) => u.role === 'user'));
       setAdmins(all.filter((u) => u.role === 'admin'));
     } catch (err: any) {
-      setError(err.message || 'Could not load users');
+      toast.error(err.message || 'Could not load users');
     } finally {
       setLoading(false);
     }
@@ -54,39 +53,35 @@ export default function UsersPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    setError(''); setSuccess('');
     const normalizedEmail = email.trim().toLocaleLowerCase();
     if (users.some((u) => u.email.trim().toLocaleLowerCase() === normalizedEmail)) {
-      setError(`An account with the email "${normalizedEmail}" already exists.`);
+      toast.error(`An account with the email "${normalizedEmail}" already exists.`);
       return;
     }
     if (!assignedAdminId) {
-      setError('Select an admin for this user.');
+      toast.error('Select an admin for this user.');
       return;
     }
     setCreating(true);
     try {
       await api.createUser({ name: name.trim(), email: normalizedEmail, password, role: 'user', assignedAdminId });
-      setSuccess('User account created.');
       setName(''); setEmail(''); setPassword(''); setAssignedAdminId('');
       load();
-    } catch (err: any) {
-      setError(err.message || 'Could not create user account');
+    } catch {
+      // The API client shows the error notification.
     } finally {
       setCreating(false);
     }
   }
 
   async function handleToggleStatus(user: AccountRow) {
-    setError(''); setSuccess('');
     const nextActive = user.isActive === false;
     setTogglingId(user._id);
     try {
       await api.setAccountStatus(user._id, nextActive);
       setUsers((prev) => prev.map((u) => (u._id === user._id ? { ...u, isActive: nextActive } : u)));
-      setSuccess(`${user.name} is now ${nextActive ? 'active' : 'inactive'}.`);
-    } catch (err: any) {
-      setError(err.message || 'Could not update status');
+    } catch {
+      // The API client shows the error notification.
     } finally {
       setTogglingId(null);
     }
@@ -153,7 +148,7 @@ export default function UsersPage() {
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15">
               <option value="" disabled>Choose an admin</option>
               {admins.map((a) => (
-                <option key={a._id} value={a._id}>{a.name} ({a.email})</option>
+                <option key={a._id} value={a._id}>{a.teamName || 'Legacy team'} — {a.name}</option>
               ))}
             </select>
           </div>
@@ -170,9 +165,6 @@ export default function UsersPage() {
         </div>
       </form>
 
-      {error && <p className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><FiAlertCircle />{error}</p>}
-      {success && <p className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"><FiCheckCircle />{success}</p>}
-
       {/* ── Users table ── */}
       <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/60 to-transparent" />
@@ -188,7 +180,7 @@ export default function UsersPage() {
               <tr className="border-b border-blue-100 bg-blue-50/60 text-left text-xs uppercase tracking-wider text-blue-900/55">
                 <th className="px-5 py-3 font-medium">Name</th>
                 <th className="px-5 py-3 font-medium">Email</th>
-                <th className="px-5 py-3 font-medium">Admin</th>
+                <th className="px-5 py-3 font-medium">Team</th>
                 <th className="px-5 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
@@ -209,7 +201,9 @@ export default function UsersPage() {
                   <td className="px-5 py-4 font-medium text-blue-950">{u.name}</td>
                   <td className="px-5 py-3 text-blue-900/60">{u.email}</td>
                   <td className="px-5 py-3 text-blue-900/60">
-                    {u.assignedAdminId ? (adminById.get(u.assignedAdminId)?.name || '—') : '—'}
+                    {u.assignedAdminId
+                      ? (adminById.get(u.assignedAdminId)?.teamName || adminById.get(u.assignedAdminId)?.name || '—')
+                      : '—'}
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center justify-end gap-1">
@@ -262,7 +256,6 @@ export default function UsersPage() {
           onClose={() => setEditing(null)}
           onSaved={(updated) => {
             setUsers((prev) => prev.map((u) => (u._id === updated._id ? { ...u, ...updated } : u)));
-            setSuccess('Profile updated.');
           }}
         />
       )}
@@ -271,7 +264,7 @@ export default function UsersPage() {
         <ResetPasswordModal
           user={resetting}
           onClose={() => setResetting(null)}
-          onDone={() => setSuccess(`Password updated for ${resetting.name}.`)}
+          onDone={() => undefined}
         />
       )}
 
@@ -283,7 +276,6 @@ export default function UsersPage() {
           onConfirm={async () => {
             await api.deleteUser(deleting._id);
             setUsers((prev) => prev.filter((u) => u._id !== deleting._id));
-            setSuccess('User account removed.');
             setDeleting(null);
           }}
         />

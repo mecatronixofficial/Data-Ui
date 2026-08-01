@@ -1,7 +1,5 @@
-'use client';
-
-import ReportsView from '@/components/ReportsView';
+import { redirect } from 'next/navigation';
 
 export default function AdminReportsPage() {
-  return <ReportsView roleFilter="admin" />;
+  redirect('/dashboard/reports');
 }

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { FiAlertCircle, FiCheck, FiKey, FiX } from 'react-icons/fi';
+import { FiCheck, FiKey, FiX } from 'react-icons/fi';
 import { api } from '@/lib/api';
+import { toast } from '@/lib/toast';
 
 export default function ResetPasswordModal({
   user,
@@ -15,13 +16,11 @@ export default function ResetPasswordModal({
 }) {
   const [password, setPassword] = useState('');
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
     if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+      toast.error('Password must be at least 6 characters.');
       return;
     }
     setSaving(true);
@@ -29,8 +28,8 @@ export default function ResetPasswordModal({
       await api.resetAccountPassword(user._id, password);
       onDone();
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Could not update password');
+    } catch {
+      // The API client shows the error notification.
     } finally {
       setSaving(false);
     }
@@ -72,12 +71,6 @@ export default function ResetPasswordModal({
             placeholder="Minimum 6 characters"
             className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
           />
-
-          {error && (
-            <p className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-              <FiAlertCircle size={13} />{error}
-            </p>
-          )}
 
           <div className="mt-6 flex justify-end gap-3 border-t border-blue-100 pt-4">
             <button type="button" onClick={onClose} disabled={saving}

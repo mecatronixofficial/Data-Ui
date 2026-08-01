@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiAlertCircle, FiCheck, FiCheckCircle, FiKey, FiSettings, FiUser } from 'react-icons/fi';
+import { FiCheck, FiKey, FiSettings, FiUser } from 'react-icons/fi';
 import { api } from '@/lib/api';
+import { toast } from '@/lib/toast';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -13,15 +14,11 @@ export default function SettingsPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
-  const [profileError, setProfileError] = useState('');
-  const [profileSuccess, setProfileSuccess] = useState('');
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState('');
 
   useEffect(() => {
     api.me()
@@ -41,13 +38,11 @@ export default function SettingsPage() {
 
   async function handleProfileSave(e: React.FormEvent) {
     e.preventDefault();
-    setProfileError(''); setProfileSuccess('');
     setProfileSaving(true);
     try {
       await api.updateProfile({ name: name.trim(), email: email.trim().toLocaleLowerCase() });
-      setProfileSuccess('Profile updated.');
-    } catch (err: any) {
-      setProfileError(err.message || 'Could not update profile');
+    } catch {
+      // The API client shows the error notification.
     } finally {
       setProfileSaving(false);
     }
@@ -55,22 +50,20 @@ export default function SettingsPage() {
 
   async function handlePasswordSave(e: React.FormEvent) {
     e.preventDefault();
-    setPasswordError(''); setPasswordSuccess('');
     if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters.');
+      toast.error('New password must be at least 6 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('New password and confirmation do not match.');
+      toast.error('New password and confirmation do not match.');
       return;
     }
     setPasswordSaving(true);
     try {
       await api.changePassword({ currentPassword, newPassword });
-      setPasswordSuccess('Password updated.');
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
-    } catch (err: any) {
-      setPasswordError(err.message || 'Could not update password');
+    } catch {
+      // The API client shows the error notification.
     } finally {
       setPasswordSaving(false);
     }
@@ -143,8 +136,6 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
-        {profileError && <p className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><FiAlertCircle />{profileError}</p>}
-        {profileSuccess && <p className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"><FiCheckCircle />{profileSuccess}</p>}
       </form>
 
       {/* ── Password form ── */}
@@ -181,8 +172,6 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
-        {passwordError && <p className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><FiAlertCircle />{passwordError}</p>}
-        {passwordSuccess && <p className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"><FiCheckCircle />{passwordSuccess}</p>}
       </form>
     </div>
   );

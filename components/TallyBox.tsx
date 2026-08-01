@@ -12,6 +12,11 @@ type DetailRow = { id: number } & BoxDetail;
 
 let nextRowId = 1;
 
+const DEFAULT_BOX_FIELDS: BoxFieldDef[] = [
+  { label: 'Name', type: 'text' },
+  { label: 'Value', type: 'number', sumTotal: true },
+];
+
 // Entries saved before boxes had a fixed Name/Value shape used capitalized keys.
 function normalizeRow(raw: any): BoxDetail {
   if (raw && typeof raw === 'object') {
@@ -38,6 +43,33 @@ function isCustomBoxFields(fields?: BoxFieldDef[]) {
     b.label.trim().toLowerCase() === 'value' && b.type === 'number'
   );
 }
+
+function usesGroupedCustomEditor(name?: string) {
+  const normalizedName = (name || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+  return [
+    'team',
+    'teambox',
+    'teams',
+    'teamsbox',
+    'expense',
+    'expensebox',
+    'expenses',
+    'expensesbox',
+    'expence',
+    'expencebox',
+    'expences',
+    'expencesbox',
+    'p2c',
+    'p2cbox',
+    'inactive',
+    'inactivebox',
+    'inactivebalce',
+    'inactivebalcebox',
+    'inactivebalance',
+    'inactivebalancebox',
+  ].includes(normalizedName);
+}
+
 export default function TallyBox(props: {
   idPrefix: string;
   index: number;
@@ -53,10 +85,28 @@ export default function TallyBox(props: {
   onDetailsChange?: (details: BoxDetail[]) => void;
   onChange: (v: number) => void;
 }) {
-  if (isCustomBoxFields(props.boxFields)) {
-    const CustomEditor = props.index === 2 ? GroupedCustomTallyBox : FlatCustomTallyBox;
+  if (usesGroupedCustomEditor(props.name)) {
     return (
-      <CustomEditor
+      <GroupedCustomTallyBox
+        idPrefix={props.idPrefix}
+        index={props.index}
+        name={props.name}
+        icon={props.icon}
+        color={props.color}
+        value={props.value}
+        details={props.details}
+        fields={props.boxFields?.length ? props.boxFields : DEFAULT_BOX_FIELDS}
+        currentUserName={props.currentUserName}
+        locked={props.locked}
+        onDetailsChange={props.onDetailsChange}
+        onChange={props.onChange}
+      />
+    );
+  }
+
+  if (isCustomBoxFields(props.boxFields)) {
+    return (
+      <FlatCustomTallyBox
         idPrefix={props.idPrefix}
         index={props.index}
         name={props.name}
@@ -149,7 +199,7 @@ function LegacyTallyBox({
         className="group relative h-14 w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
       >
         {locked && (
-          <span className="absolute right-1.5 top-1.5 text-blue-900/25"><FiLock size={11} /></span>
+          <span className="absolute bottom-1.5 right-1.5 text-blue-900/25"><FiLock size={11} /></span>
         )}
         <span className="flex items-center justify-between gap-1.5">
           <span
@@ -445,6 +495,16 @@ function customGroupsFromDetails(
     const row = { ...detail };
     delete row[GROUP_ID_KEY];
     delete row[GROUP_NAME_KEY];
+    for (const field of fields) {
+      if (field.label in row) continue;
+      const legacyKey = Object.keys(row).find(
+        (key) => normalizedColumnLabel(key) === normalizedColumnLabel(field.label),
+      );
+      if (legacyKey) {
+        row[field.label] = row[legacyKey];
+        delete row[legacyKey];
+      }
+    }
     group.rows.push(computeRow({ id: nextRowId++, ...row }, fields));
   }
 
@@ -595,7 +655,7 @@ function GroupedCustomTallyBox({
         className="group relative h-14 w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
       >
         {locked && (
-          <span className="absolute right-1.5 top-1.5 text-blue-900/25"><FiLock size={11} /></span>
+          <span className="absolute bottom-1.5 right-1.5 text-blue-900/25"><FiLock size={11} /></span>
         )}
         <span className="flex items-center justify-between gap-1.5">
           <span
@@ -826,7 +886,7 @@ function GroupedCustomTallyBox({
 
             <div className="flex items-center justify-between border-t border-blue-100 bg-blue-50/60 px-5 py-4">
               {cryptoTotals.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {cryptoTotals.map((column) => (
                     <span key={column.label} className="rounded-lg bg-white px-3 py-2 shadow-sm">
                       <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/50">
@@ -837,6 +897,14 @@ function GroupedCustomTallyBox({
                       </span>
                     </span>
                   ))}
+                  <span className="rounded-lg bg-blue-100 px-3 py-2 shadow-sm">
+                    <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/60">
+                      Value
+                    </span>
+                    <span className="font-mono text-base font-semibold tabular-nums text-blue-950">
+                      {wholeCryptoValue(total)}
+                    </span>
+                  </span>
                 </div>
               ) : (
                 <div>
@@ -855,8 +923,7 @@ function GroupedCustomTallyBox({
   );
 }
 
-// All custom boxes except Box 2 keep the original direct-table workflow. Box 2 alone
-// uses the grouped Name/Value summaries rendered by GroupedCustomTallyBox above.
+// Custom boxes other than Team, Expense, P2C, and Inactive use the configured columns directly.
 function FlatCustomTallyBox({
   idPrefix,
   index,
@@ -941,7 +1008,7 @@ function FlatCustomTallyBox({
         className="group relative h-14 w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
       >
         {locked && (
-          <span className="absolute right-1.5 top-1.5 text-blue-900/25"><FiLock size={11} /></span>
+          <span className="absolute bottom-1.5 right-1.5 text-blue-900/25"><FiLock size={11} /></span>
         )}
         <span className="flex items-center justify-between gap-1.5">
           <span
@@ -1100,7 +1167,7 @@ function FlatCustomTallyBox({
 
             <div className="flex items-center justify-between border-t border-blue-100 bg-blue-50/60 px-5 py-4">
               {cryptoTotals.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {cryptoTotals.map((column) => (
                     <span key={column.label} className="rounded-lg bg-white px-3 py-2 shadow-sm">
                       <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/50">
@@ -1111,6 +1178,14 @@ function FlatCustomTallyBox({
                       </span>
                     </span>
                   ))}
+                  <span className="rounded-lg bg-blue-100 px-3 py-2 shadow-sm">
+                    <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/60">
+                      Value
+                    </span>
+                    <span className="font-mono text-base font-semibold tabular-nums text-blue-950">
+                      {wholeCryptoValue(total)}
+                    </span>
+                  </span>
                 </div>
               ) : (
                 <div>
