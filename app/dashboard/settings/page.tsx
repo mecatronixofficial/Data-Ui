@@ -13,6 +13,7 @@ export default function SettingsPage() {
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [userId, setUserId] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -29,6 +30,7 @@ export default function SettingsPage() {
         }
         setName(user?.name || '');
         setEmail(user?.email || '');
+        setUserId(user?.userId || '');
         setRole(user?.role || '');
         setLoading(false);
       })
@@ -50,8 +52,8 @@ export default function SettingsPage() {
 
   async function handlePasswordSave(e: React.FormEvent) {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      toast.error('New password must be at least 6 characters.');
+    if (newPassword.length < 12) {
+      toast.error('New password must be at least 12 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -129,6 +131,11 @@ export default function SettingsPage() {
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div className="sm:col-span-2">
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Login User ID</label>
+            <input readOnly value={userId} aria-label="Login user ID"
+              className="w-full select-all cursor-text rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 font-mono text-xs text-blue-950 outline-none" />
+          </div>
+          <div className="sm:col-span-2">
             <button type="submit" disabled={profileSaving}
               className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,107,196,0.45)] active:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0">
               <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
@@ -151,17 +158,17 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 items-end gap-5 sm:grid-cols-3">
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Current password</label>
-            <input required type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Current password"
+            <input required type="password" maxLength={72} autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Current password"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">New password</label>
-            <input required type="password" minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Minimum 6 characters"
+            <input required type="password" minLength={12} maxLength={72} autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Minimum 12 characters"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Confirm new password</label>
-            <input required type="password" minLength={6} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repeat new password"
+            <input required type="password" minLength={12} maxLength={72} autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repeat new password"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div className="sm:col-span-3">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiCheck, FiClock, FiColumns, FiDownload, FiEdit2, FiExternalLink, FiFileText, FiFilter, FiFlag, FiSearch, FiShield, FiTrash2, FiX } from 'react-icons/fi';
 import { api, exportUrl, blankBoxDetail, computeFieldLocked, type BoxFieldDef, type FinalTotalSign } from '@/lib/api';
@@ -75,6 +75,9 @@ export default function ReportsView({
   const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<EditingEntry | null>(null);
+  const [editingLoadingId, setEditingLoadingId] = useState<string | null>(null);
+  const editingChangedBoxes = useRef<Map<string, Set<number>>>(new Map());
+  const editingDateChanged = useRef(false);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Entry | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -280,8 +283,23 @@ export default function ReportsView({
     finally { setDeleting(false); }
   }
 
-  function startEdit(entry: Entry) {
-    const savedByName = new Map(entry.fields.map((field) => [field.name, field]));
+  function markEditingBoxChanged(fieldName: string, boxIndex: number) {
+    const indexes = editingChangedBoxes.current.get(fieldName) || new Set<number>();
+    indexes.add(boxIndex);
+    editingChangedBoxes.current.set(fieldName, indexes);
+  }
+
+  async function startEdit(entry: Entry) {
+    setEditingLoadingId(entry._id);
+    let fullEntry: Entry;
+    try {
+      fullEntry = await api.getEntry(entry._id);
+    } catch (err: any) {
+      toast.error(err.message || 'Could not load the complete report for editing');
+      setEditingLoadingId(null);
+      return;
+    }
+    const savedByName = new Map(fullEntry.fields.map((field) => [field.name, field]));
     const editableFields: FieldValue[] = fieldDefinitions.length > 0
       ? fieldDefinitions.map((definition) => {
           const saved = savedByName.get(definition.name);
@@ -309,7 +327,7 @@ export default function ReportsView({
             ),
           };
         })
-      : entry.fields.map((field) => ({
+      : fullEntry.fields.map((field) => ({
           name: field.name,
           boxNames: [...field.boxNames],
           boxFields: field.boxFields,
@@ -323,24 +341,28 @@ export default function ReportsView({
           locked: computeFieldLocked(role, Boolean(editLocks.get(field.name))),
         }));
 
+    editingChangedBoxes.current.clear();
+    editingDateChanged.current = false;
     setEditing({
-      _id: entry._id, name: entry.name,
-      date: new Date(entry.date).toISOString().split('T')[0],
+      _id: fullEntry._id, name: fullEntry.name,
+      date: new Date(fullEntry.date).toISOString().split('T')[0],
       fields: editableFields,
     });
+    setEditingLoadingId(null);
   }
 
   function updateEditingBox(fieldIndex: number, boxIndex: number, value: number) {
-    setEditing((cur) => { if (!cur) return cur; const fs = [...cur.fields]; const boxes = [...fs[fieldIndex].boxes]; boxes[boxIndex] = value; fs[fieldIndex] = { ...fs[fieldIndex], boxes }; return { ...cur, fields: fs }; });
+    setEditing((cur) => { if (!cur) return cur; markEditingBoxChanged(cur.fields[fieldIndex].name, boxIndex); const fs = [...cur.fields]; const boxes = [...fs[fieldIndex].boxes]; boxes[boxIndex] = value; fs[fieldIndex] = { ...fs[fieldIndex], boxes }; return { ...cur, fields: fs }; });
   }
   function updateEditingDetails(fieldIndex: number, boxIndex: number, details: BoxDetail[]) {
-    setEditing((cur) => { if (!cur) return cur; const fs = [...cur.fields]; const d = [...fs[fieldIndex].details]; d[boxIndex] = details; fs[fieldIndex] = { ...fs[fieldIndex], details: d }; return { ...cur, fields: fs }; });
+    setEditing((cur) => { if (!cur) return cur; markEditingBoxChanged(cur.fields[fieldIndex].name, boxIndex); const fs = [...cur.fields]; const d = [...fs[fieldIndex].details]; d[boxIndex] = details; fs[fieldIndex] = { ...fs[fieldIndex], details: d }; return { ...cur, fields: fs }; });
   }
   function resetEditingField(fieldIndex: number) {
     setEditing((cur) => {
       if (!cur) return cur;
       const fs = [...cur.fields];
       const f = fs[fieldIndex];
+      f.boxes.forEach((_, boxIndex) => markEditingBoxChanged(f.name, boxIndex));
       fs[fieldIndex] = { ...f, boxes: f.boxes.map(() => 0), details: f.boxes.map(() => []) };
       return { ...cur, fields: fs };
     });
@@ -353,9 +375,16 @@ export default function ReportsView({
       const updated = await api.updateEntry(editing._id, {
         name: editing.name.trim(), date: editing.date,
         fields: editing.fields.map((f) => ({ name: f.name, boxes: f.boxes, details: f.details, operator: f.operator })),
+        changedFields: Array.from(editingChangedBoxes.current.entries()).map(([fieldName, boxIndexes]) => ({
+          name: fieldName,
+          boxIndexes: Array.from(boxIndexes).sort((a, b) => a - b),
+        })),
+        dateChanged: editingDateChanged.current,
       });
       setEntries((cur) => cur.map((e) => e._id === editing._id ? { ...e, ...updated } : e));
       setEditing(null);
+      editingChangedBoxes.current.clear();
+      editingDateChanged.current = false;
     } catch {
       // The API client shows the error notification.
     }
@@ -499,7 +528,7 @@ export default function ReportsView({
               />
             </label>
             <label className="text-xs font-semibold uppercase tracking-wider text-black">Date
-              <input type="date" value={editing.date} onChange={(e) => setEditing((c) => c && { ...c, date: e.target.value })} className="mt-2 w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm normal-case tracking-normal outline-none focus:border-blue-400" />
+              <input type="date" value={editing.date} onChange={(e) => { editingDateChanged.current = true; setEditing((c) => c && { ...c, date: e.target.value }); }} className="mt-2 w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm normal-case tracking-normal outline-none focus:border-blue-400" />
             </label>
           </div>
           <div className="space-y-5">
@@ -616,7 +645,7 @@ export default function ReportsView({
                             >
                               <FiExternalLink size={14} />
                             </button>
-                            <button onClick={() => startEdit(e)} aria-label="Quick edit" title="Quick edit" className="rounded-lg p-2 text-blue-900 transition hover:bg-blue-50">
+                            <button onClick={() => startEdit(e)} disabled={editingLoadingId === e._id} aria-label="Quick edit" title="Quick edit" className="rounded-lg p-2 text-blue-900 transition hover:bg-blue-50 disabled:cursor-wait disabled:opacity-40">
                               <FiEdit2 size={14} />
                             </button>
                           </>

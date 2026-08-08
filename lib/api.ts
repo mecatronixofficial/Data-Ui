@@ -8,6 +8,31 @@ type RequestNotifications = {
   error?: boolean;
 };
 
+let refreshPromise: Promise<boolean> | null = null;
+let currentUserCache: { value: any; expiresAt: number } | null = null;
+let currentUserPromise: Promise<any> | null = null;
+
+function clearCurrentUserCache() {
+  currentUserCache = null;
+  currentUserPromise = null;
+}
+
+function refreshSession() {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${BASE}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -22,7 +47,8 @@ async function request(
   path: string,
   options: RequestInit = {},
   notifications: RequestNotifications = {},
-) {
+  canRefresh = true,
+): Promise<any> {
   const method = (options.method || 'GET').toUpperCase();
   const shouldNotifyError = notifications.error ?? method !== 'GET';
   let res: Response;
@@ -41,6 +67,15 @@ async function request(
       showToast({ message, tone: 'error', duration: 6000 });
     }
     throw new ApiError(message, 0);
+  }
+
+  if (
+    res.status === 401
+    && canRefresh
+    && !['/auth/login', '/auth/mfa/verify', '/auth/logout', '/auth/refresh'].includes(path)
+    && await refreshSession()
+  ) {
+    return request(path, options, notifications, false);
   }
 
   if (!res.ok) {
@@ -83,13 +118,35 @@ async function request(
   return result;
 }
 
+function getCurrentUser() {
+  if (currentUserCache && currentUserCache.expiresAt > Date.now()) {
+    return Promise.resolve(currentUserCache.value);
+  }
+  if (!currentUserPromise) {
+    currentUserPromise = request('/auth/me')
+      .then((value) => {
+        currentUserCache = { value, expiresAt: Date.now() + 30_000 };
+        return value;
+      })
+      .finally(() => {
+        currentUserPromise = null;
+      });
+  }
+  return currentUserPromise;
+}
+
 export const api = {
-  login: (email: string, password: string) =>
-    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }, { success: 'You are now signed in.', successTitle: 'Welcome back' }),
-  logout: () => request('/auth/logout', { method: 'POST' }, { success: 'You have been signed out.' }),
-  me: () => request('/auth/me'),
+  login: (identifier: string, password: string) =>
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ email: identifier.trim(), password }) }),
+  verifyMfa: (challengeToken: string, code: string) =>
+    request('/auth/mfa/verify', { method: 'POST', body: JSON.stringify({ challengeToken, code: code.trim() }) }, { success: 'Identity verified. You are now signed in.', successTitle: 'Welcome back' })
+      .then((value) => { clearCurrentUserCache(); return value; }),
+  logout: () => request('/auth/logout', { method: 'POST' }, { success: 'You have been signed out.' })
+    .finally(clearCurrentUserCache),
+  me: getCurrentUser,
   updateProfile: (payload: { name?: string; email?: string }) =>
-    request('/auth/me', { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Your profile was updated.' }),
+    request('/auth/me', { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Your profile was updated.' })
+      .then((value) => { clearCurrentUserCache(); return value; }),
   changePassword: (payload: { currentPassword: string; newPassword: string }) =>
     request('/auth/me/password', { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Your password was updated.' }),
 
@@ -101,6 +158,8 @@ export const api = {
     request(`/entries/active/${id}`, { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Team report saved. Your values will remain available.' }),
   myEntries: () => request('/entries/me'),
   getActiveEntry: () => request('/entries/active', { cache: 'no-store' }, { error: false }),
+  getEntryWorkspace: () => request('/entries/workspace', { cache: 'no-store' }),
+  getEntryVersion: (id: string) => request(`/entries/${id}/version`, { cache: 'no-store' }, { error: false }),
   getEntry: (id: string) => request(`/entries/${id}`),
   allEntries: (params: {
     name?: string;
@@ -124,6 +183,8 @@ export const api = {
     request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Account profile updated.' }),
   resetAccountPassword: (id: string, password: string) =>
     request(`/users/${id}/password`, { method: 'PUT', body: JSON.stringify({ password }) }, { success: 'Account password updated.' }),
+  resetAccountMfa: (id: string) =>
+    request(`/users/${id}/mfa/reset`, { method: 'PUT' }, { success: 'Authenticator reset. Enrollment is required at the next sign-in.' }),
   setAccountStatus: (id: string, isActive: boolean) =>
     request(`/users/${id}/status`, { method: 'PUT', body: JSON.stringify({ isActive }) }, { success: `Account ${isActive ? 'activated' : 'deactivated'}.` }),
   deleteUser: (id: string) => request(`/users/${id}`, { method: 'DELETE' }, { success: 'Account removed.' }),
@@ -132,8 +193,11 @@ export const api = {
   updateReportSettings: (visibleColumns: string[]) =>
     request('/report-settings', { method: 'PUT', body: JSON.stringify({ visibleColumns }) }, { success: 'Report columns saved.' }),
 
-  getFields: () => request('/fields'),
-  getFieldEditLocks: (): Promise<{ name: string; userOnlyEdit: boolean }[]> => request('/fields/edit-locks'),
+  // no-store: this response is filtered per-viewer (see FieldsService.findAll) by
+  // account and by the superadmin-editable visibleTo allowlist, so a cached copy from
+  // another account or from before a visibility change was saved must never be reused.
+  getFields: () => request('/fields', { cache: 'no-store' }),
+  getFieldEditLocks: (): Promise<{ name: string; userOnlyEdit: boolean }[]> => request('/fields/edit-locks', { cache: 'no-store' }),
   createField: (payload: { name: string; order?: number; boxNames: string[]; icon?: string; color?: string; boxIcons?: string[]; boxColors?: string[]; boxFields?: BoxFieldDef[][]; userOnlyEdit?: boolean; visibleTo?: string[] }) =>
     request('/fields', { method: 'POST', body: JSON.stringify(payload) }, { success: 'Field added.' }),
   updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; calcType?: string; groupSplit?: number; icon?: string; color?: string; boxIcons?: string[]; boxColors?: string[]; boxFields?: BoxFieldDef[][]; userOnlyEdit?: boolean; visibleTo?: string[] }) =>

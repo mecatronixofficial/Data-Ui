@@ -67,8 +67,11 @@ export default function Sidebar({
 
   async function handleLogout() {
     setOpen(false);
-    await api.logout();
-    router.push('/login');
+    try {
+      await api.logout();
+    } finally {
+      router.replace('/login');
+    }
   }
 
   return (

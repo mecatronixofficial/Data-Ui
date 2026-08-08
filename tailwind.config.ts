@@ -45,9 +45,9 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ['var(--font-fraunces)', 'serif'],
-        body: ['var(--font-inter)', 'sans-serif'],
-        mono: ['var(--font-plex-mono)', 'monospace'],
+        display: ['Georgia', 'Cambria', 'Times New Roman', 'serif'],
+        body: ['Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'Cascadia Mono', 'Consolas', 'monospace'],
       },
       boxShadow: {
         card: '0 1px 2px rgba(20,22,28,0.04), 0 8px 24px rgba(20,22,28,0.06)',

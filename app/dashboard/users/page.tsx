@@ -2,14 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiEdit2, FiKey, FiPower, FiTrash2, FiUserPlus, FiUsers } from 'react-icons/fi';
+import { FiEdit2, FiKey, FiPower, FiShieldOff, FiTrash2, FiUserPlus, FiUsers } from 'react-icons/fi';
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import EditAccountModal from '@/components/EditAccountModal';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 
-type AccountRow = { _id: string; name: string; email: string; role: string; teamName?: string; assignedAdminId?: string | null; isActive?: boolean };
+type AccountRow = { _id: string; userId?: string; name: string; email: string; role: string; teamName?: string; assignedAdminId?: string | null; isActive?: boolean; mfaEnabled?: boolean };
+
+function nextAvailableUserId(prefix: string, accounts: AccountRow[]) {
+  const used = new Set(accounts.map((account) => account.userId?.toLocaleLowerCase()).filter(Boolean));
+  let sequence = 1;
+  while (used.has(`${prefix}${String(sequence).padStart(2, '0')}`.toLocaleLowerCase())) sequence += 1;
+  return `${prefix}${String(sequence).padStart(2, '0')}`;
+}
 
 export default function UsersPage() {
   const router = useRouter();
@@ -17,12 +24,14 @@ export default function UsersPage() {
   const [admins, setAdmins] = useState<AccountRow[]>([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [assignedAdminId, setAssignedAdminId] = useState('');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AccountRow | null>(null);
   const [resetting, setResetting] = useState<AccountRow | null>(null);
+  const [resettingMfa, setResettingMfa] = useState<AccountRow | null>(null);
   const [deleting, setDeleting] = useState<AccountRow | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -32,6 +41,7 @@ export default function UsersPage() {
       const all: AccountRow[] = await api.listUsers();
       setUsers(all.filter((u) => u.role === 'user'));
       setAdmins(all.filter((u) => u.role === 'admin'));
+      setUserId((current) => current || nextAvailableUserId('User', all));
     } catch (err: any) {
       toast.error(err.message || 'Could not load users');
     } finally {
@@ -54,8 +64,13 @@ export default function UsersPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     const normalizedEmail = email.trim().toLocaleLowerCase();
+    const normalizedUserId = userId.trim();
     if (users.some((u) => u.email.trim().toLocaleLowerCase() === normalizedEmail)) {
       toast.error(`An account with the email "${normalizedEmail}" already exists.`);
+      return;
+    }
+    if ([...users, ...admins].some((account) => account.userId?.toLocaleLowerCase() === normalizedUserId.toLocaleLowerCase())) {
+      toast.error(`The User ID "${normalizedUserId}" already exists.`);
       return;
     }
     if (!assignedAdminId) {
@@ -64,8 +79,8 @@ export default function UsersPage() {
     }
     setCreating(true);
     try {
-      await api.createUser({ name: name.trim(), email: normalizedEmail, password, role: 'user', assignedAdminId });
-      setName(''); setEmail(''); setPassword(''); setAssignedAdminId('');
+      await api.createUser({ name: name.trim(), userId: normalizedUserId, email: normalizedEmail, password, role: 'user', assignedAdminId });
+      setName(''); setUserId(''); setEmail(''); setPassword(''); setAssignedAdminId('');
       load();
     } catch {
       // The API client shows the error notification.
@@ -126,11 +141,18 @@ export default function UsersPage() {
           </div>
           <h2 className="font-display text-xl text-blue-950">Create a user</h2>
         </div>
-        <div className="grid grid-cols-1 items-end gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 items-end gap-5 sm:grid-cols-2 lg:grid-cols-5">
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Name</label>
             <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
+          </div>
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Login User ID</label>
+            <input required value={userId} minLength={3} maxLength={32} pattern="[A-Za-z][A-Za-z0-9._-]{2,31}"
+              autoCapitalize="none" spellCheck={false} onChange={(e) => setUserId(e.target.value)} placeholder="User01"
+              title="Start with a letter; use 3-32 letters, numbers, dots, underscores, or hyphens"
+              className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 font-mono text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Email</label>
@@ -139,7 +161,7 @@ export default function UsersPage() {
           </div>
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Password</label>
-            <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimum 6 characters"
+            <input required type="password" minLength={12} maxLength={72} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimum 12 characters"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
@@ -152,7 +174,7 @@ export default function UsersPage() {
               ))}
             </select>
           </div>
-          <div className="sm:col-span-2 lg:col-span-4">
+          <div className="sm:col-span-2 lg:col-span-5">
             {!loading && admins.length === 0 && (
               <p className="mb-3 text-xs text-black">No admin accounts yet — create one on the Admins page first.</p>
             )}
@@ -199,7 +221,15 @@ export default function UsersPage() {
               {!loading && users.map((u) => (
                 <tr key={u._id} className="border-b border-blue-50 transition last:border-0 hover:bg-blue-50/40">
                   <td className="px-5 py-4 font-medium text-blue-950">{u.name}</td>
-                  <td className="px-5 py-3 text-black">{u.email}</td>
+                  <td className="px-5 py-3 text-black">
+                    <span className="block">{u.email}</span>
+                    <span className="mt-0.5 block select-all font-mono text-[10px] text-blue-700" title="Login user ID">
+                      User ID: {u.userId || 'Pending assignment'}
+                    </span>
+                    <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${u.mfaEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                      {u.mfaEnabled ? 'MFA active' : 'MFA setup pending'}
+                    </span>
+                  </td>
                   <td className="px-5 py-3 text-black">
                     {u.assignedAdminId
                       ? (adminById.get(u.assignedAdminId)?.teamName || adminById.get(u.assignedAdminId)?.name || '—')
@@ -235,6 +265,14 @@ export default function UsersPage() {
                         <FiKey size={14} />
                       </button>
                       <button
+                        onClick={() => setResettingMfa(u)}
+                        disabled={!u.mfaEnabled}
+                        aria-label="Reset authenticator" title={u.mfaEnabled ? 'Reset authenticator' : 'Authenticator is not enrolled'}
+                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-amber-700 transition hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-35"
+                      >
+                        <FiShieldOff size={14} />
+                      </button>
+                      <button
                         onClick={() => setDeleting(u)}
                         aria-label="Remove user" title="Remove user"
                         className="rounded-lg p-2 text-black transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
@@ -265,6 +303,20 @@ export default function UsersPage() {
           user={resetting}
           onClose={() => setResetting(null)}
           onDone={() => undefined}
+        />
+      )}
+
+      {resettingMfa && (
+        <ConfirmDeleteModal
+          variant="reset-mfa"
+          title="Reset authenticator"
+          message={`Reset ${resettingMfa.name}'s authenticator and recovery codes? They must scan a new QR code at their next sign-in.`}
+          onClose={() => setResettingMfa(null)}
+          onConfirm={async () => {
+            await api.resetAccountMfa(resettingMfa._id);
+            setUsers((prev) => prev.map((user) => user._id === resettingMfa._id ? { ...user, mfaEnabled: false } : user));
+            setResettingMfa(null);
+          }}
         />
       )}
 

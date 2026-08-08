@@ -19,8 +19,8 @@ export default function ResetPasswordModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters.');
+    if (password.length < 12) {
+      toast.error('Password must be at least 12 characters.');
       return;
     }
     setSaving(true);
@@ -66,9 +66,9 @@ export default function ResetPasswordModal({
           </p>
           <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">New password</label>
           <input
-            required type="password" minLength={6} autoFocus
+            required type="password" minLength={12} maxLength={72} autoComplete="new-password" autoFocus
             value={password} onChange={(e) => setPassword(e.target.value)}
-            placeholder="Minimum 6 characters"
+            placeholder="Minimum 12 characters"
             className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
           />
 
@@ -77,7 +77,7 @@ export default function ResetPasswordModal({
               className="rounded-xl border border-blue-200 bg-white px-5 py-2.5 text-sm font-medium text-blue-800 hover:bg-blue-50 disabled:opacity-60">
               Cancel
             </button>
-            <button type="submit" disabled={saving || password.length < 6}
+            <button type="submit" disabled={saving || password.length < 12}
               className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:-translate-y-0.5 disabled:opacity-60">
               <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
               <span className="relative flex items-center gap-2">
