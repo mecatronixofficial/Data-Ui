@@ -89,7 +89,7 @@ export default function ColorPicker({
       {open && (
         <div className="absolute left-0 top-full z-40 mt-2 w-64 rounded-xl border border-blue-100 bg-white p-3 shadow-2xl">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-900/45">Choose a color</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-black">Choose a color</p>
             {value && (
               <button
                 type="button"
@@ -98,7 +98,7 @@ export default function ColorPicker({
                   setOpen(false);
                 }}
                 aria-label="Clear color"
-                className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-[10px] font-medium text-blue-900/45 hover:bg-blue-50 hover:text-red-600"
+                className="flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-[10px] font-medium text-black hover:bg-blue-50 hover:text-red-600"
               >
                 <FiX size={11} /> Clear
               </button>

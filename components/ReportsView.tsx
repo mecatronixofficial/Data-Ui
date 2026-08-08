@@ -12,6 +12,7 @@ import DynamicFieldsForm, { FinalTotalCard, type FieldValue } from '@/components
 type FieldMeta = { name: string; order: number; boxNames: string[] };
 type FieldDefinition = FieldMeta & {
   icon?: string;
+  color?: string;
   boxIcons?: string[];
   boxColors?: string[];
   boxFields?: BoxFieldDef[][];
@@ -288,6 +289,7 @@ export default function ReportsView({
           return {
             name: definition.name,
             icon: definition.icon || '',
+            color: definition.color || '',
             boxNames: [...definition.boxNames],
             boxIcons: [...(definition.boxIcons || [])],
             boxColors: [...(definition.boxColors || [])],
@@ -409,18 +411,18 @@ export default function ReportsView({
                 <FiFlag size={17} />
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-600">Super Admin</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-900">Super Admin</p>
                 <h2 className="font-display text-xl text-blue-950">Report field</h2>
               </div>
             </div>
-            <button onClick={() => setColumnsOpen(false)} aria-label="Close" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-700"><FiX /></button>
+            <button onClick={() => setColumnsOpen(false)} aria-label="Close" className="rounded-lg p-2 text-black hover:bg-blue-50 hover:text-blue-950"><FiX /></button>
           </div>
-          <p className="mb-3 text-xs text-blue-900/50">Name, Team, Date, {finalTotalLabel}, Added by and Updated by always show. Choose which extra field boxes appear in the table below.</p>
+          <p className="mb-3 text-xs text-black">Name, Team, Date, {finalTotalLabel}, Added by and Updated by always show. Choose which extra field boxes appear in the table below.</p>
           <div className="mb-5 flex flex-wrap gap-2">
-            {dynamicColumns.length === 0 && <p className="text-sm text-blue-900/40">No extra fields configured yet.</p>}
+            {dynamicColumns.length === 0 && <p className="text-sm text-black">No extra fields configured yet.</p>}
             {dynamicColumns.map((col) => (
-              <label key={col.key} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition ${draftColumns.has(col.key) ? 'border-blue-400 bg-blue-50 text-blue-900' : 'border-blue-100 bg-white text-blue-900/50'}`}>
-                <input type="checkbox" checked={draftColumns.has(col.key)} onChange={() => toggleDraftColumn(col.key)} className="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500" />
+              <label key={col.key} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition ${draftColumns.has(col.key) ? 'border-blue-400 bg-blue-50 text-blue-900' : 'border-blue-100 bg-white text-black'}`}>
+                <input type="checkbox" checked={draftColumns.has(col.key)} onChange={() => toggleDraftColumn(col.key)} className="h-4 w-4 rounded border-blue-300 text-blue-900 focus:ring-blue-500" />
                 {col.label}
               </label>
             ))}
@@ -444,23 +446,23 @@ export default function ReportsView({
         </div>
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[180px]">
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Name</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Name</label>
             <div className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-500/15">
-              <FiSearch className="text-blue-500" size={14} />
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Search by name" className="w-full bg-transparent text-sm text-blue-950 outline-none placeholder:text-blue-900/35" />
+              <FiSearch className="text-blue-800" size={14} />
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Search by name" className="w-full bg-transparent text-sm text-blue-950 outline-none placeholder:text-black" />
             </div>
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">From</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">From</label>
             <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 font-mono text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">To</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">To</label>
             <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 font-mono text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           {role === 'superadmin' && admins.length > 0 && (
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Team</label>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Team</label>
               <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} className="rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15">
                 <option value="">All teams</option>
                 {admins.filter((a) => a.teamName).map((a) => (
@@ -483,20 +485,20 @@ export default function ReportsView({
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-300/50 to-transparent" />
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-600">Admin action</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-900">Admin action</p>
               <h2 className="font-display text-2xl text-blue-950">Edit record</h2>
             </div>
-            <button onClick={() => setEditing(null)} aria-label="Close editor" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-700"><FiX /></button>
+            <button onClick={() => setEditing(null)} aria-label="Close editor" className="rounded-lg p-2 text-black hover:bg-blue-50 hover:text-blue-950"><FiX /></button>
           </div>
           <div className="mb-5 grid gap-4 sm:grid-cols-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-blue-900/65">Team report
+            <label className="text-xs font-semibold uppercase tracking-wider text-black">Team report
               <input
                 value={editing.name}
                 readOnly
                 className="mt-2 w-full cursor-default rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm normal-case tracking-normal outline-none"
               />
             </label>
-            <label className="text-xs font-semibold uppercase tracking-wider text-blue-900/65">Date
+            <label className="text-xs font-semibold uppercase tracking-wider text-black">Date
               <input type="date" value={editing.date} onChange={(e) => setEditing((c) => c && { ...c, date: e.target.value })} className="mt-2 w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm normal-case tracking-normal outline-none focus:border-blue-400" />
             </label>
           </div>
@@ -527,7 +529,7 @@ export default function ReportsView({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[850px] text-sm">
             <thead>
-              <tr className="border-b border-blue-100 bg-blue-50/60 text-left text-xs uppercase tracking-wider text-blue-900/55">
+              <tr className="border-b border-blue-100 bg-blue-50/60 text-left text-xs uppercase tracking-wider text-black">
                 {visibleCols.map((col) => (
                   <th key={col.key} className={`px-5 py-3 font-medium ${col.key === 'total' ? 'text-right' : ''}`}>{col.key === 'total' ? finalTotalLabel : col.label}</th>
                 ))}
@@ -537,14 +539,14 @@ export default function ReportsView({
             <tbody>
               {loading && (
                 <tr><td colSpan={colSpan} className="px-5 py-10 text-center">
-                  <div className="flex items-center justify-center gap-2 text-blue-900/40">
+                  <div className="flex items-center justify-center gap-2 text-black">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-500" />
                     <span className="font-mono text-xs">loading…</span>
                   </div>
                 </td></tr>
               )}
               {!loading && displayedEntries.length === 0 && (
-                <tr><td colSpan={colSpan} className="px-5 py-10 text-center text-sm text-blue-900/40">No entries match these filters.</td></tr>
+                <tr><td colSpan={colSpan} className="px-5 py-10 text-center text-sm text-black">No entries match these filters.</td></tr>
               )}
               {!loading && displayedEntries.map((e) => (
                 <tr key={e._id} className="border-b border-blue-50 transition last:border-0 hover:bg-blue-50/40">
@@ -559,7 +561,7 @@ export default function ReportsView({
                       </td>
                     );
                     if (col.key === 'date') return (
-                      <td key={col.key} className="whitespace-nowrap px-5 py-3 font-mono text-blue-900/60">
+                      <td key={col.key} className="whitespace-nowrap px-5 py-3 font-mono text-black">
                         <span className={wasEdited(e) ? 'inline-flex items-center gap-2 rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800' : ''} title={wasEdited(e) ? `Updated ${new Date(e.updatedAt).toLocaleString()}` : undefined}>
                           {new Date(e.date).toISOString().split('T')[0]}
                           {wasEdited(e) && (
@@ -580,12 +582,12 @@ export default function ReportsView({
                       </td>
                     );
                     if (col.key === 'addedBy') return (
-                      <td key={col.key} className="px-5 py-3 text-blue-900/50">
+                      <td key={col.key} className="px-5 py-3 text-black">
                         <span className="inline-flex items-center">{e.createdBy?.name || '—'}<RoleBadge role={e.createdBy?.role} /></span>
                       </td>
                     );
                     if (col.key === 'updatedBy') return (
-                      <td key={col.key} className="px-5 py-3 text-blue-900/50">
+                      <td key={col.key} className="px-5 py-3 text-black">
                         {wasEdited(e)
                           ? <span className="inline-flex items-center">{e.updatedBy?.name || '—'}<RoleBadge role={e.updatedBy?.role} /></span>
                           : '—'}
@@ -596,7 +598,7 @@ export default function ReportsView({
                     const boxIndexRaw = col.key.slice(lastColon + 1);
                     const value = boxValue(e, fieldName, Number(boxIndexRaw));
                     return (
-                      <td key={col.key} className="px-5 py-3 text-blue-900/60">
+                      <td key={col.key} className="px-5 py-3 text-black">
                         <span className="rounded-lg bg-blue-50 px-2 py-1 font-mono text-xs text-blue-800">{value === null ? '—' : value}</span>
                       </td>
                     );
@@ -614,7 +616,7 @@ export default function ReportsView({
                             >
                               <FiExternalLink size={14} />
                             </button>
-                            <button onClick={() => startEdit(e)} aria-label="Quick edit" title="Quick edit" className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50">
+                            <button onClick={() => startEdit(e)} aria-label="Quick edit" title="Quick edit" className="rounded-lg p-2 text-blue-900 transition hover:bg-blue-50">
                               <FiEdit2 size={14} />
                             </button>
                           </>
@@ -645,7 +647,7 @@ export default function ReportsView({
               <FiTrash2 size={20} />
             </div>
             <h2 id="delete-entry-title" className="font-display text-2xl text-blue-950">Delete record?</h2>
-            <p className="mt-2 text-sm leading-6 text-blue-900/55">
+            <p className="mt-2 text-sm leading-6 text-black">
               Are you sure you want to delete <span className="font-semibold text-blue-950">{deleteTarget.name}</span>? This cannot be undone.
             </p>
             <div className="mt-6 flex justify-end gap-3">
@@ -675,27 +677,27 @@ export default function ReportsView({
                   <FiClock size={17} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-600">Update history</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-900">Update history</p>
                   <h2 id="history-entry-title" className="font-display text-xl text-blue-950">{historyEntry.name}</h2>
                 </div>
               </div>
-              <button onClick={closeHistory} aria-label="Close" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-700"><FiX /></button>
+              <button onClick={closeHistory} aria-label="Close" className="rounded-lg p-2 text-black hover:bg-blue-50 hover:text-blue-950"><FiX /></button>
             </div>
 
             {historyLoading && (
-              <div className="flex items-center justify-center gap-2 py-8 text-blue-900/40">
+              <div className="flex items-center justify-center gap-2 py-8 text-black">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-500" />
                 <span className="font-mono text-xs">loading…</span>
               </div>
             )}
 
             {!historyLoading && historyItems && historyItems.length === 0 && (
-              <p className="py-8 text-center text-sm text-blue-900/40">No recorded changes yet.</p>
+              <p className="py-8 text-center text-sm text-black">No recorded changes yet.</p>
             )}
 
             {!historyLoading && historyItems && historyItems.length > 0 && (
               <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
-                <p className="text-xs text-blue-900/50">Showing the last {historyItems.length} update{historyItems.length === 1 ? '' : 's'}, most recent first.</p>
+                <p className="text-xs text-black">Showing the last {historyItems.length} update{historyItems.length === 1 ? '' : 's'}, most recent first.</p>
                 {historyItems.map((item, index) => (
                   <div key={index} className="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -703,14 +705,14 @@ export default function ReportsView({
                         <span className="font-medium text-blue-950">{item.updatedBy?.name || '—'}</span>
                         <RoleBadge role={item.updatedBy?.role} />
                       </span>
-                      <span className="font-mono text-xs text-blue-900/50">{new Date(item.updatedAt).toLocaleString()}</span>
+                      <span className="font-mono text-xs text-black">{new Date(item.updatedAt).toLocaleString()}</span>
                     </div>
                     <ul className="space-y-1">
                       {item.changes.map((change, ci) => (
-                        <li key={ci} className="flex flex-wrap items-center gap-1.5 text-xs text-blue-900/70">
+                        <li key={ci} className="flex flex-wrap items-center gap-1.5 text-xs text-black">
                           <span className="font-medium text-blue-950">{change.label}:</span>
                           <span className="rounded bg-red-50 px-1.5 py-0.5 font-mono text-red-700 line-through">{change.from === null ? '—' : change.from}</span>
-                          <span className="text-blue-400">→</span>
+                          <span className="text-blue-700">→</span>
                           <span className="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-emerald-700">{change.to === null ? '—' : change.to}</span>
                         </li>
                       ))}

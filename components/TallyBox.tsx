@@ -199,13 +199,13 @@ function LegacyTallyBox({
         className="group relative h-14 w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
       >
         {locked && (
-          <span className="absolute bottom-1.5 right-1.5 text-blue-900/25"><FiLock size={11} /></span>
+          <span className="absolute bottom-1.5 right-1.5 text-black"><FiLock size={11} /></span>
         )}
         <span className="flex items-center justify-between gap-1.5">
-          <span
-            className={colorHex ? undefined : value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-600'}
-            style={colorHex ? { color: colorHex } : undefined}
-          >
+          {/* The icon always keeps this one default color — it never changes for a
+              positive/negative value, and the box color accent (colorHex) is applied
+              to the value below only, never to the icon. */}
+          <span className="text-blue-900">
             <FieldIcon icon={icon} size={11} />
           </span>
           <span className="truncate text-[9px] font-semibold uppercase tracking-wider text-black">{title}</span>
@@ -234,11 +234,11 @@ function LegacyTallyBox({
             <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
               <div>
                 <h3 id={`${idPrefix}-box-${index}-title`} className="font-display text-xl text-blue-950">{title}</h3>
-                <p className="text-xs text-blue-900/45">
+                <p className="text-xs text-black">
                   {locked ? 'View only — someone else on this report enters these values.' : onNameChange ? 'Customize the box name, then enter values below.' : 'Enter values below.'}
                 </p>
               </div>
-              <button type="button" onClick={() => setOpen(false)} aria-label="Close popup" className="rounded-lg p-2 text-blue-900/45 hover:bg-blue-50 hover:text-blue-800">
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close popup" className="rounded-lg p-2 text-black hover:bg-blue-50 hover:text-blue-800">
                 <FiX size={20} />
               </button>
             </div>
@@ -248,7 +248,7 @@ function LegacyTallyBox({
                 <div className="mb-5">
                   <label
                     htmlFor={`${idPrefix}-box-${index}-name`}
-                    className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-blue-900/45"
+                    className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-black"
                   >
                     Box name
                   </label>
@@ -263,7 +263,7 @@ function LegacyTallyBox({
                   />
                 </div>
               )}
-              <div className="mb-2 flex gap-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-blue-900/45">
+              <div className="mb-2 flex gap-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-black">
                 <span className="min-w-0 flex-1 truncate">Name</span>
                 <span className="w-20 shrink-0 truncate">Value</span>
                 {!locked && <span className="w-7 shrink-0" />}
@@ -278,7 +278,7 @@ function LegacyTallyBox({
                       onChange={(event) => updateRowName(row.id, event.target.value)}
                       placeholder="Name"
                       aria-label={`Row ${rowIndex + 1} name`}
-                      className={`min-w-0 flex-1 rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'bg-blue-50/70 text-blue-900/60 cursor-default' : 'bg-blue-50/40'}`}
+                      className={`min-w-0 flex-1 rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'bg-blue-50/70 text-black cursor-default' : 'bg-blue-50/40'}`}
                     />
                     <div className="w-20 shrink-0">
                       <SignedNumberInput
@@ -303,7 +303,7 @@ function LegacyTallyBox({
               </div>
 
               {!locked && (
-                <button type="button" onClick={addRow} className="mt-3 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
+                <button type="button" onClick={addRow} className="mt-3 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-blue-950 hover:bg-blue-50">
                   <FiPlus /> Add another
                 </button>
               )}
@@ -311,7 +311,7 @@ function LegacyTallyBox({
 
             <div className="flex items-center justify-between border-t border-blue-100 bg-blue-50/60 px-5 py-4">
               <div>
-                <span className="mr-3 text-xs font-semibold uppercase tracking-wider text-blue-900/50">Total</span>
+                <span className="mr-3 text-xs font-semibold uppercase tracking-wider text-black">Total</span>
                 <span className="font-mono text-2xl font-semibold tabular-nums text-blue-950">{total}</span>
               </div>
               <button type="button" onClick={() => setOpen(false)} className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
@@ -655,13 +655,13 @@ function GroupedCustomTallyBox({
         className="group relative h-14 w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
       >
         {locked && (
-          <span className="absolute bottom-1.5 right-1.5 text-blue-900/25"><FiLock size={11} /></span>
+          <span className="absolute bottom-1.5 right-1.5 text-black"><FiLock size={11} /></span>
         )}
         <span className="flex items-center justify-between gap-1.5">
-          <span
-            className={colorHex ? undefined : value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-600'}
-            style={colorHex ? { color: colorHex } : undefined}
-          >
+          {/* The icon always keeps this one default color — it never changes for a
+              positive/negative value, and the box color accent (colorHex) is applied
+              to the value below only, never to the icon. */}
+          <span className="text-blue-900">
             <FieldIcon icon={icon} size={11} />
           </span>
           <span className="truncate text-[9px] font-semibold uppercase tracking-wider text-black">{title}</span>
@@ -702,24 +702,24 @@ function GroupedCustomTallyBox({
             <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
               <div>
                 <h3 id={`${idPrefix}-box-${index}-title`} className="font-display text-xl text-blue-950">{title}</h3>
-                <p className="text-xs text-blue-900/45">
+                <p className="text-xs text-black">
                   {locked
                     ? 'View only — expand a name to see its details.'
                     : 'Add a name, then expand it to enter the configured table values.'}
                 </p>
                 {conversionRate !== null && (
-                  <p className="mt-1 font-mono text-xs font-semibold text-blue-700">
+                  <p className="mt-1 font-mono text-xs font-semibold text-blue-950">
                     1 USD = {conversionRate} INR
                   </p>
                 )}
               </div>
-              <button type="button" onClick={() => setOpen(false)} aria-label="Close popup" className="rounded-lg p-2 text-blue-900/45 hover:bg-blue-50 hover:text-blue-800">
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close popup" className="rounded-lg p-2 text-black hover:bg-blue-50 hover:text-blue-800">
                 <FiX size={20} />
               </button>
             </div>
 
             <div className="overflow-auto p-5">
-              <div className="mb-2 grid grid-cols-[minmax(0,1fr)_7rem_auto] items-center gap-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-blue-900/45">
+              <div className="mb-2 grid grid-cols-[minmax(0,1fr)_7rem_auto] items-center gap-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-black">
                 <span>Name</span>
                 <span className="text-right">Value</span>
                 <span className="w-[4.5rem]" />
@@ -737,7 +737,7 @@ function GroupedCustomTallyBox({
                         placeholder="Enter name"
                         aria-label={`Item ${groupIndex + 1} name`}
                         className={`min-w-0 rounded-lg border border-blue-100 px-3 py-2 text-sm font-medium text-blue-950 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${
-                          locked ? 'cursor-default bg-blue-50/70 text-blue-900/60' : 'bg-blue-50/40'
+                          locked ? 'cursor-default bg-blue-50/70 text-black' : 'bg-blue-50/40'
                         }`}
                       />
                       <span
@@ -752,7 +752,7 @@ function GroupedCustomTallyBox({
                           onClick={() => toggleGroup(group.id)}
                           aria-expanded={group.open}
                           aria-label={`${group.open ? 'Collapse' : 'Expand'} ${group.name.trim() || 'unnamed item'} details`}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-blue-700 hover:bg-blue-50"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-blue-950 hover:bg-blue-50"
                         >
                           {group.open ? <FiChevronUp /> : <FiChevronDown />}
                         </button>
@@ -773,12 +773,12 @@ function GroupedCustomTallyBox({
                       <div className="overflow-x-auto border-t border-blue-100 bg-blue-50/20 px-3 pb-3 pt-2">
                         <table className="w-full min-w-max border-separate border-spacing-y-2 text-sm">
                           <thead>
-                            <tr className="text-left text-[10px] font-semibold uppercase tracking-wider text-blue-900/45">
+                            <tr className="text-left text-[10px] font-semibold uppercase tracking-wider text-black">
                               {displayFields.map((field) => (
                                 <th key={field.label} className="px-1 pb-1 font-semibold">
                                   {field.label}
                                   {field.auto === 'constant' && (
-                                    <span className="ml-1 font-normal normal-case text-blue-900/40">({field.constant ?? 0})</span>
+                                    <span className="ml-1 font-normal normal-case text-black">({field.constant ?? 0})</span>
                                   )}
                                 </th>
                               ))}
@@ -791,13 +791,13 @@ function GroupedCustomTallyBox({
                                 {displayFields.map((field) => (
                                   <td key={field.label} className="px-1">
                                     {field.auto === 'serial' ? (
-                                      <span className="flex h-7 min-w-[2rem] items-center justify-center rounded-lg bg-blue-50/80 px-1.5 font-mono text-xs text-blue-900/50">
+                                      <span className="flex h-7 min-w-[2rem] items-center justify-center rounded-lg bg-blue-50/80 px-1.5 font-mono text-xs text-black">
                                         {rowIndex + 1}
                                       </span>
                                     ) : field.auto === 'constant' || field.type === 'computed' || isCryptoTotalField(field, fields) ? (
                                       <span
                                         aria-label={`Row ${rowIndex + 1} ${field.label}`}
-                                        className="flex h-7 min-w-[5rem] items-center justify-end rounded-lg bg-blue-50/80 px-2 font-mono text-xs text-blue-900/70"
+                                        className="flex h-7 min-w-[5rem] items-center justify-end rounded-lg bg-blue-50/80 px-2 font-mono text-xs text-black"
                                       >
                                         {Number(row[field.label]) || 0}
                                       </span>
@@ -817,7 +817,7 @@ function GroupedCustomTallyBox({
                                         readOnly={locked}
                                         onChange={(event) => !locked && updateCell(group.id, row.id, field.label, event.target.value)}
                                         aria-label={`Row ${rowIndex + 1} ${field.label}`}
-                                        className={`min-w-[8rem] rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'cursor-default bg-blue-50/70 text-blue-900/60' : 'bg-white'}`}
+                                        className={`min-w-[8rem] rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'cursor-default bg-blue-50/70 text-black' : 'bg-white'}`}
                                       />
                                     ) : field.type === 'time' ? (
                                       <input
@@ -826,7 +826,7 @@ function GroupedCustomTallyBox({
                                         readOnly={locked}
                                         onChange={(event) => !locked && updateCell(group.id, row.id, field.label, event.target.value)}
                                         aria-label={`Row ${rowIndex + 1} ${field.label}`}
-                                        className={`min-w-[6rem] rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'cursor-default bg-blue-50/70 text-blue-900/60' : 'bg-white'}`}
+                                        className={`min-w-[6rem] rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'cursor-default bg-blue-50/70 text-black' : 'bg-white'}`}
                                       />
                                     ) : (
                                       <input
@@ -836,7 +836,7 @@ function GroupedCustomTallyBox({
                                         onChange={(event) => !locked && updateCell(group.id, row.id, field.label, event.target.value)}
                                         placeholder={field.label}
                                         aria-label={`Row ${rowIndex + 1} ${field.label}`}
-                                        className={`min-w-[7rem] rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'cursor-default bg-blue-50/70 text-blue-900/60' : 'bg-white'}`}
+                                        className={`min-w-[7rem] rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'cursor-default bg-blue-50/70 text-black' : 'bg-white'}`}
                                       />
                                     )}
                                   </td>
@@ -862,7 +862,7 @@ function GroupedCustomTallyBox({
                           <button
                             type="button"
                             onClick={() => addRow(group.id)}
-                            className="mt-1 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                            className="mt-1 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-blue-950 hover:bg-blue-50"
                           >
                             <FiPlus /> Add row
                           </button>
@@ -877,7 +877,7 @@ function GroupedCustomTallyBox({
                 <button
                   type="button"
                   onClick={addGroup}
-                  className="mt-4 flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                  className="mt-4 flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-950 hover:bg-blue-100"
                 >
                   <FiPlus /> Add name &amp; value
                 </button>
@@ -889,7 +889,7 @@ function GroupedCustomTallyBox({
                 <div className="flex flex-wrap items-center gap-2">
                   {cryptoTotals.map((column) => (
                     <span key={column.label} className="rounded-lg bg-white px-3 py-2 shadow-sm">
-                      <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/50">
+                      <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-black">
                         {column.label}
                       </span>
                       <span className="font-mono text-base font-semibold tabular-nums text-blue-950">
@@ -898,7 +898,7 @@ function GroupedCustomTallyBox({
                     </span>
                   ))}
                   <span className="rounded-lg bg-blue-100 px-3 py-2 shadow-sm">
-                    <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/60">
+                    <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-black">
                       Value
                     </span>
                     <span className="font-mono text-base font-semibold tabular-nums text-blue-950">
@@ -908,7 +908,7 @@ function GroupedCustomTallyBox({
                 </div>
               ) : (
                 <div>
-                  <span className="mr-3 text-xs font-semibold uppercase tracking-wider text-blue-900/50">Total</span>
+                  <span className="mr-3 text-xs font-semibold uppercase tracking-wider text-black">Total</span>
                   <span className="font-mono text-2xl font-semibold tabular-nums text-blue-950">{total}</span>
                 </div>
               )}
@@ -1008,13 +1008,13 @@ function FlatCustomTallyBox({
         className="group relative h-14 w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
       >
         {locked && (
-          <span className="absolute bottom-1.5 right-1.5 text-blue-900/25"><FiLock size={11} /></span>
+          <span className="absolute bottom-1.5 right-1.5 text-black"><FiLock size={11} /></span>
         )}
         <span className="flex items-center justify-between gap-1.5">
-          <span
-            className={colorHex ? undefined : value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-600'}
-            style={colorHex ? { color: colorHex } : undefined}
-          >
+          {/* The icon always keeps this one default color — it never changes for a
+              positive/negative value, and the box color accent (colorHex) is applied
+              to the value below only, never to the icon. */}
+          <span className="text-blue-900">
             <FieldIcon icon={icon} size={11} />
           </span>
           <span className="truncate text-[9px] font-semibold uppercase tracking-wider text-black">{title}</span>
@@ -1043,13 +1043,13 @@ function FlatCustomTallyBox({
             <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
               <div>
                 <h3 id={`${idPrefix}-box-${index}-title`} className="font-display text-xl text-blue-950">{title}</h3>
-                <p className="text-xs text-blue-900/45">
+                <p className="text-xs text-black">
                   {locked
                     ? 'View only — someone else on this report enters these values.'
                     : 'Add a row for each record, then enter values below.'}
                 </p>
                 {conversionRate !== null && (
-                  <p className="mt-1 font-mono text-xs font-semibold text-blue-700">
+                  <p className="mt-1 font-mono text-xs font-semibold text-blue-950">
                     1 USD = {conversionRate} INR
                   </p>
                 )}
@@ -1058,7 +1058,7 @@ function FlatCustomTallyBox({
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close popup"
-                className="rounded-lg p-2 text-blue-900/45 hover:bg-blue-50 hover:text-blue-800"
+                className="rounded-lg p-2 text-black hover:bg-blue-50 hover:text-blue-800"
               >
                 <FiX size={20} />
               </button>
@@ -1067,12 +1067,12 @@ function FlatCustomTallyBox({
             <div className="overflow-auto p-5">
               <table className="w-full min-w-max border-separate border-spacing-y-2 text-sm">
                 <thead>
-                  <tr className="text-left text-[10px] font-semibold uppercase tracking-wider text-blue-900/45">
+                  <tr className="text-left text-[10px] font-semibold uppercase tracking-wider text-black">
                     {displayFields.map((field) => (
                       <th key={field.label} className="px-1 pb-1 font-semibold">
                         {field.label}
                         {field.auto === 'constant' && (
-                          <span className="ml-1 font-normal normal-case text-blue-900/40">
+                          <span className="ml-1 font-normal normal-case text-black">
                             ({field.constant ?? 0})
                           </span>
                         )}
@@ -1087,13 +1087,13 @@ function FlatCustomTallyBox({
                       {displayFields.map((field) => (
                         <td key={field.label} className="px-1">
                           {field.auto === 'serial' ? (
-                            <span className="flex h-7 min-w-[2rem] items-center justify-center rounded-lg bg-blue-50/60 px-1.5 font-mono text-xs text-blue-900/50">
+                            <span className="flex h-7 min-w-[2rem] items-center justify-center rounded-lg bg-blue-50/60 px-1.5 font-mono text-xs text-black">
                               {rowIndex + 1}
                             </span>
                           ) : field.auto === 'constant' || field.type === 'computed' || isCryptoTotalField(field, fields) ? (
                             <span
                               aria-label={`Row ${rowIndex + 1} ${field.label}`}
-                              className="flex h-7 min-w-[5rem] items-center justify-end rounded-lg bg-blue-50/60 px-2 font-mono text-xs text-blue-900/70"
+                              className="flex h-7 min-w-[5rem] items-center justify-end rounded-lg bg-blue-50/60 px-2 font-mono text-xs text-black"
                             >
                               {Number(row[field.label]) || 0}
                             </span>
@@ -1113,7 +1113,7 @@ function FlatCustomTallyBox({
                               readOnly={locked}
                               onChange={(event) => !locked && updateCell(row.id, field.label, event.target.value)}
                               aria-label={`Row ${rowIndex + 1} ${field.label}`}
-                              className={`min-w-[8rem] rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'cursor-default bg-blue-50/70 text-blue-900/60' : 'bg-blue-50/40'}`}
+                              className={`min-w-[8rem] rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'cursor-default bg-blue-50/70 text-black' : 'bg-blue-50/40'}`}
                             />
                           ) : field.type === 'time' ? (
                             <input
@@ -1122,7 +1122,7 @@ function FlatCustomTallyBox({
                               readOnly={locked}
                               onChange={(event) => !locked && updateCell(row.id, field.label, event.target.value)}
                               aria-label={`Row ${rowIndex + 1} ${field.label}`}
-                              className={`min-w-[6rem] rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'cursor-default bg-blue-50/70 text-blue-900/60' : 'bg-blue-50/40'}`}
+                              className={`min-w-[6rem] rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'cursor-default bg-blue-50/70 text-black' : 'bg-blue-50/40'}`}
                             />
                           ) : (
                             <input
@@ -1132,7 +1132,7 @@ function FlatCustomTallyBox({
                               onChange={(event) => !locked && updateCell(row.id, field.label, event.target.value)}
                               placeholder={field.label}
                               aria-label={`Row ${rowIndex + 1} ${field.label}`}
-                              className={`min-w-[7rem] rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'cursor-default bg-blue-50/70 text-blue-900/60' : 'bg-blue-50/40'}`}
+                              className={`min-w-[7rem] rounded-lg border border-blue-100 px-2 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${locked ? 'cursor-default bg-blue-50/70 text-black' : 'bg-blue-50/40'}`}
                             />
                           )}
                         </td>
@@ -1158,7 +1158,7 @@ function FlatCustomTallyBox({
                 <button
                   type="button"
                   onClick={addRow}
-                  className="mt-3 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                  className="mt-3 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-blue-950 hover:bg-blue-50"
                 >
                   <FiPlus /> Add row
                 </button>
@@ -1170,7 +1170,7 @@ function FlatCustomTallyBox({
                 <div className="flex flex-wrap items-center gap-2">
                   {cryptoTotals.map((column) => (
                     <span key={column.label} className="rounded-lg bg-white px-3 py-2 shadow-sm">
-                      <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/50">
+                      <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-black">
                         {column.label}
                       </span>
                       <span className="font-mono text-base font-semibold tabular-nums text-blue-950">
@@ -1179,7 +1179,7 @@ function FlatCustomTallyBox({
                     </span>
                   ))}
                   <span className="rounded-lg bg-blue-100 px-3 py-2 shadow-sm">
-                    <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/60">
+                    <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-black">
                       Value
                     </span>
                     <span className="font-mono text-base font-semibold tabular-nums text-blue-950">
@@ -1189,7 +1189,7 @@ function FlatCustomTallyBox({
                 </div>
               ) : (
                 <div>
-                  <span className="mr-3 text-xs font-semibold uppercase tracking-wider text-blue-900/50">Total</span>
+                  <span className="mr-3 text-xs font-semibold uppercase tracking-wider text-black">Total</span>
                   <span className="font-mono text-2xl font-semibold tabular-nums text-blue-950">{total}</span>
                 </div>
               )}
@@ -1235,7 +1235,7 @@ function SignedNumberInput({ value, onChange, label, readOnly }: { value: number
       }}
       placeholder="0"
       aria-label={label}
-      className={`w-full min-w-0 rounded-lg border border-blue-100 px-2 py-1.5 text-right font-mono text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${readOnly ? 'bg-blue-50/70 text-blue-900/60 cursor-default' : 'bg-blue-50/40'}`}
+      className={`w-full min-w-0 rounded-lg border border-blue-100 px-2 py-1.5 text-right font-mono text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${readOnly ? 'bg-blue-50/70 text-black cursor-default' : 'bg-blue-50/40'}`}
     />
   );
 }

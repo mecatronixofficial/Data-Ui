@@ -209,14 +209,14 @@ export default function IconPicker({
         aria-label="Choose icon"
         aria-expanded={open}
         aria-disabled={disabled}
-        className={`flex ${dims} items-center justify-center rounded-xl bg-blue-100 text-blue-700 transition ${disabled ? 'cursor-default opacity-70' : 'hover:bg-blue-200'}`}
+        className={`flex ${dims} items-center justify-center rounded-xl bg-blue-100 text-blue-950 transition ${disabled ? 'cursor-default opacity-70' : 'hover:bg-blue-200'}`}
       >
         <FieldIcon icon={value} size={iconSize} />
       </button>
 
       {open && (
         <div className="absolute left-0 top-full z-40 mt-2 w-64 rounded-xl border border-blue-100 bg-white p-3 shadow-2xl">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/45">Choose an icon</p>
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-black">Choose an icon</p>
           <div className="grid max-h-64 grid-cols-5 gap-1.5 overflow-y-auto pr-1">
             {ICONS.map(({ key, label, Icon }) => (
               <button
@@ -229,7 +229,7 @@ export default function IconPicker({
                   setOpen(false);
                 }}
                 className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${
-                  value === key ? 'bg-blue-600 text-white' : 'text-blue-700 hover:bg-blue-50'
+                  value === key ? 'bg-blue-600 text-white' : 'text-blue-950 hover:bg-blue-50'
                 }`}
               >
                 <Icon size={15} />

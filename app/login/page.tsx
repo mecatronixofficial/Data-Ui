@@ -64,42 +64,42 @@ export default function LoginPage() {
               <div className="mx-auto flex h-16 w-16 items-center justify-center">
                 <Image src="/logo/B-one Production (1).png" alt="Beone Production logo" width={56} height={56} className="h-full w-full object-contain" priority />
               </div>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-blue-600">Beone Production</p>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-blue-900">Beone Production</p>
               <h1 className="font-display text-4xl text-blue-950">Sign in</h1>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email */}
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Email</label>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Email</label>
                 <div className="flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 shadow-[inset_0_1px_3px_rgba(0,0,0,0.04)] transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-500/20">
-                  <FiMail size={15} className="shrink-0 text-blue-500" />
+                  <FiMail size={15} className="shrink-0 text-blue-800" />
                   <input
                     type="email" required value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@company.com"
-                    className="w-full bg-transparent text-sm text-blue-950 outline-none placeholder:text-blue-900/35"
+                    className="w-full bg-transparent text-sm text-blue-950 outline-none placeholder:text-black"
                   />
                 </div>
               </div>
 
               {/* Password */}
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Password</label>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Password</label>
                 <div className="flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 shadow-[inset_0_1px_3px_rgba(0,0,0,0.04)] transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-500/20">
-                  <FiLock size={15} className="shrink-0 text-blue-500" />
+                  <FiLock size={15} className="shrink-0 text-blue-800" />
                   <input
                     type={showPassword ? 'text' : 'password'} required value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-transparent text-sm text-blue-950 outline-none placeholder:text-blue-900/35"
+                    className="w-full bg-transparent text-sm text-blue-950 outline-none placeholder:text-black"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                     aria-pressed={showPassword}
-                    className="shrink-0 rounded-lg p-1 text-blue-400 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40"
+                    className="shrink-0 rounded-lg p-1 text-blue-700 transition hover:bg-blue-100 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40"
                   >
                     {showPassword ? <FiEyeOff size={15} aria-hidden="true" /> : <FiEye size={15} aria-hidden="true" />}
                   </button>
@@ -119,7 +119,7 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <p className="mt-6 text-center text-xs text-blue-900/40">Access granted by your administrator.</p>
+            <p className="mt-6 text-center text-xs text-black">Access granted by your administrator.</p>
           </div>
         </div>
       </div>
