@@ -137,7 +137,8 @@ function getCurrentUser() {
 
 export const api = {
   login: (identifier: string, password: string) =>
-    request('/auth/login', { method: 'POST', body: JSON.stringify({ email: identifier.trim(), password }) }),
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ email: identifier.trim(), password }) })
+      .then((value) => { clearCurrentUserCache(); return value; }),
   verifyMfa: (challengeToken: string, code: string) =>
     request('/auth/mfa/verify', { method: 'POST', body: JSON.stringify({ challengeToken, code: code.trim() }) }, { success: 'Identity verified. You are now signed in.', successTitle: 'Welcome back' })
       .then((value) => { clearCurrentUserCache(); return value; }),
@@ -149,6 +150,9 @@ export const api = {
       .then((value) => { clearCurrentUserCache(); return value; }),
   changePassword: (payload: { currentPassword: string; newPassword: string }) =>
     request('/auth/me/password', { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Your password was updated.' }),
+  getMfaPolicy: (): Promise<{ enabled: boolean }> => request('/auth/mfa/settings', { cache: 'no-store' }),
+  updateMfaPolicy: (enabled: boolean): Promise<{ enabled: boolean }> =>
+    request('/auth/mfa/settings', { method: 'PUT', body: JSON.stringify({ enabled }) }, { success: `Multi-factor authentication is now ${enabled ? 'required' : 'optional'}.` }),
 
   createEntry: (payload: any) =>
     request('/entries', { method: 'POST', body: JSON.stringify(payload) }, { success: 'Team report saved. Your values will remain available.' }),

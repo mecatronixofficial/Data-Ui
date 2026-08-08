@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiCheck, FiKey, FiSettings, FiUser } from 'react-icons/fi';
+import { FiCheck, FiKey, FiSettings, FiShield, FiUser } from 'react-icons/fi';
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 
@@ -20,6 +20,9 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(true);
+  const [mfaLoading, setMfaLoading] = useState(true);
+  const [mfaSaving, setMfaSaving] = useState(false);
 
   useEffect(() => {
     api.me()
@@ -33,8 +36,19 @@ export default function SettingsPage() {
         setUserId(user?.userId || '');
         setRole(user?.role || '');
         setLoading(false);
+        return api.getMfaPolicy();
       })
-      .catch(() => router.replace('/login'));
+      .then((policy) => {
+        if (policy) setMfaRequired(policy.enabled !== false);
+      })
+      .catch((error) => {
+        if (error?.status === 401) {
+          router.replace('/login');
+          return;
+        }
+        toast.error(error?.message || 'Could not load MFA settings');
+      })
+      .finally(() => setMfaLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
@@ -68,6 +82,24 @@ export default function SettingsPage() {
       // The API client shows the error notification.
     } finally {
       setPasswordSaving(false);
+    }
+  }
+
+  async function handleMfaToggle() {
+    if (mfaLoading || mfaSaving) return;
+    const nextEnabled = !mfaRequired;
+    if (!nextEnabled && !window.confirm(
+      'Turn off MFA for every account? Users will be able to sign in with only their password.',
+    )) return;
+
+    setMfaSaving(true);
+    try {
+      const policy = await api.updateMfaPolicy(nextEnabled);
+      setMfaRequired(policy.enabled !== false);
+    } catch {
+      // The API client shows the error notification.
+    } finally {
+      setMfaSaving(false);
     }
   }
 
@@ -146,6 +178,40 @@ export default function SettingsPage() {
       </form>
 
       {/* ── Password form ── */}
+      <section className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/60 to-transparent" />
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-[0_4px_12px_rgba(0,107,196,0.28)] ${mfaRequired ? 'bg-gradient-to-br from-emerald-600 to-emerald-500' : 'bg-gradient-to-br from-slate-500 to-slate-400'}`}>
+              <FiShield size={18} />
+            </div>
+            <div>
+              <h2 className="font-display text-xl text-blue-950">Multi-factor authentication</h2>
+              <p className="mt-1 max-w-xl text-sm leading-6 text-black">
+                {mfaRequired
+                  ? 'ON — every Super Admin, Admin, and User must verify an authenticator code when signing in.'
+                  : 'OFF — every account can sign in with only email/User ID and password.'}
+              </p>
+              <p className="mt-1 text-xs text-black">Existing authenticator registrations and recovery codes are preserved while MFA is off.</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={mfaRequired}
+            aria-label="Require multi-factor authentication"
+            onClick={handleMfaToggle}
+            disabled={mfaLoading || mfaSaving}
+            className={`relative h-9 w-16 shrink-0 rounded-full p-1 shadow-inner transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/30 disabled:cursor-wait disabled:opacity-60 ${mfaRequired ? 'bg-emerald-600' : 'bg-slate-300'}`}
+          >
+            <span className={`flex h-7 w-7 items-center justify-center rounded-full bg-white text-[9px] font-bold shadow-md transition-transform ${mfaRequired ? 'translate-x-7 text-emerald-700' : 'translate-x-0 text-slate-600'}`}>
+              {mfaLoading || mfaSaving ? '...' : mfaRequired ? 'ON' : 'OFF'}
+            </span>
+          </button>
+        </div>
+      </section>
+
       <form onSubmit={handlePasswordSave}
         className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/60 to-transparent" />

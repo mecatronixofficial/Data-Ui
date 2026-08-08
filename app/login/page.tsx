@@ -45,8 +45,12 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const response: MfaStart = await api.login(identifier, password);
+      const response: MfaStart | { mfaRequired: false } = await api.login(identifier, password);
       setPassword('');
+      if (response.mfaRequired === false) {
+        router.push('/dashboard');
+        return;
+      }
       setCode('');
       setChallenge(response);
       setStage('mfa');
