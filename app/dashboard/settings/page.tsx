@@ -88,14 +88,19 @@ export default function SettingsPage() {
   async function handleMfaToggle() {
     if (mfaLoading || mfaSaving) return;
     const nextEnabled = !mfaRequired;
-    if (!nextEnabled && !window.confirm(
-      'Turn off MFA for every account? Users will be able to sign in with only their password.',
-    )) return;
+    const confirmation = nextEnabled
+      ? 'Turn on MFA for your Super Admin account? You will be signed out and receive a new QR code at the next login.'
+      : 'Turn off MFA for your Super Admin account? Your existing authenticator and recovery codes will stop working.';
+    if (!window.confirm(confirmation)) return;
 
     setMfaSaving(true);
     try {
       const policy = await api.updateMfaPolicy(nextEnabled);
       setMfaRequired(policy.enabled !== false);
+      if (nextEnabled) {
+        await api.logout();
+        router.replace('/login');
+      }
     } catch {
       // The API client shows the error notification.
     } finally {
@@ -186,13 +191,13 @@ export default function SettingsPage() {
               <FiShield size={18} />
             </div>
             <div>
-              <h2 className="font-display text-xl text-blue-950">Multi-factor authentication</h2>
+              <h2 className="font-display text-xl text-blue-950">My multi-factor authentication</h2>
               <p className="mt-1 max-w-xl text-sm leading-6 text-black">
                 {mfaRequired
-                  ? 'ON — every Super Admin, Admin, and User must verify an authenticator code when signing in.'
-                  : 'OFF — every account can sign in with only email/User ID and password.'}
+                  ? 'ON — your Super Admin account must verify an authenticator code when signing in.'
+                  : 'OFF — your Super Admin account can sign in with only User ID/email and password.'}
               </p>
-              <p className="mt-1 text-xs text-black">Existing authenticator registrations and recovery codes are preserved while MFA is off.</p>
+              <p className="mt-1 text-xs text-black">Admin and User accounts always require MFA. Turning this back on creates a new QR code for you.</p>
             </div>
           </div>
 

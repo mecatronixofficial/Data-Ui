@@ -152,7 +152,7 @@ export const api = {
     request('/auth/me/password', { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Your password was updated.' }),
   getMfaPolicy: (): Promise<{ enabled: boolean }> => request('/auth/mfa/settings', { cache: 'no-store' }),
   updateMfaPolicy: (enabled: boolean): Promise<{ enabled: boolean }> =>
-    request('/auth/mfa/settings', { method: 'PUT', body: JSON.stringify({ enabled }) }, { success: `Multi-factor authentication is now ${enabled ? 'required' : 'optional'}.` }),
+    request('/auth/mfa/settings', { method: 'PUT', body: JSON.stringify({ enabled }) }, { success: `MFA is now ${enabled ? 'on' : 'off'} for your Super Admin account.` }),
 
   createEntry: (payload: any) =>
     request('/entries', { method: 'POST', body: JSON.stringify(payload) }, { success: 'Team report saved. Your values will remain available.' }),
