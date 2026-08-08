@@ -21,7 +21,7 @@ export default function TotalPill({
       : value > 0
         ? dark
           ? 'border border-blue-300/40 bg-blue-400/20 text-blue-100'
-          : 'border border-blue-200 bg-blue-50 text-blue-700'
+          : 'border border-blue-200 bg-blue-50 text-blue-950'
         : ''
     : '';
 
@@ -35,7 +35,7 @@ export default function TotalPill({
     <div className="flex min-w-[4.5rem] flex-col gap-1">
       {label && (
         <span className={`truncate text-[8px] font-semibold uppercase tracking-[0.12em] ${
-          dark ? 'text-blue-100/55' : 'text-blue-900/40'
+          dark ? 'text-blue-100/55' : 'text-black'
         }`}>
           {label}
         </span>

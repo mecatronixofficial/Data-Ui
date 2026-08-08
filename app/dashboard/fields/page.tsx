@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiCheck, FiChevronDown, FiChevronUp, FiLock, FiPlus, FiTrash2, FiX } from 'react-icons/fi';
+import { FiCheck, FiChevronDown, FiChevronUp, FiEye, FiEyeOff, FiLock, FiPlus, FiTrash2, FiX } from 'react-icons/fi';
 import { api, type BoxFieldDef, type FinalTotalSign } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import IconPicker, { FieldIcon } from '@/components/IconPicker';
@@ -10,10 +10,15 @@ import ColorPicker, { boxColorHex } from '@/components/ColorPicker';
 
 type CalcType = 'grouped' | 'signed';
 
+type AccountSummary = { _id: string; name: string; email: string; role: string };
+
 type FieldRow = {
   _id?: string;
   name: string;
   icon: string;
+  // This field's own accent color (used for a decorative accent only — never applied
+  // to the icon above, which always keeps its own fixed color).
+  color: string;
   boxNames: string[];
   boxIcons: string[];
   boxColors: string[];
@@ -21,6 +26,8 @@ type FieldRow = {
   calcType: CalcType;
   groupSplit: number;
   userOnlyEdit: boolean;
+  // Account ids allowed to see this field on their entry/reports pages. Empty = everyone.
+  visibleTo: string[];
 };
 
 // A box's inner detail-table columns default to this plain Name/Value pair.
@@ -77,6 +84,9 @@ export default function FieldsPage() {
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<ConfirmDelete | null>(null);
   const [boxEditor, setBoxEditor] = useState<{ index: number; boxIndex: number } | null>(null);
+  const [visibilityEditor, setVisibilityEditor] = useState<number | null>(null);
+  // Users/admins available to pick from in the visibility editor (superadmin only).
+  const [allAccounts, setAllAccounts] = useState<AccountSummary[]>([]);
   // true only for super admin (manageFields permission)
   const [canEdit, setCanEdit] = useState(false);
 
@@ -100,6 +110,7 @@ export default function FieldsPage() {
             _id: f._id,
             name: f.name,
             icon: f.icon || '',
+            color: f.color || '',
             boxNames: [...f.boxNames],
             boxIcons: f.boxNames.map((_: string, i: number) => f.boxIcons?.[i] || ''),
             boxColors: f.boxNames.map((_: string, i: number) => f.boxColors?.[i] || ''),
@@ -107,8 +118,16 @@ export default function FieldsPage() {
             calcType: f.calcType,
             groupSplit: f.groupSplit,
             userOnlyEdit: Boolean(f.userOnlyEdit),
+            visibleTo: Array.isArray(f.visibleTo) ? f.visibleTo : [],
           }));
         setRows(loadedRows);
+        api.listUsers()
+          .then((accounts: any[]) =>
+            setAllAccounts(
+              Array.isArray(accounts) ? accounts.filter((a) => a.role === 'admin' || a.role === 'user') : [],
+            ),
+          )
+          .catch(() => setAllAccounts([]));
       })
       .catch((err: any) => toast.error(err.message || 'Could not load fields'))
       .finally(() => setLoading(false));
@@ -148,6 +167,7 @@ export default function FieldsPage() {
       {
         name: fieldName,
         icon: '',
+        color: '',
         boxNames: ['Box 1'],
         boxIcons: [''],
         boxColors: [''],
@@ -155,6 +175,7 @@ export default function FieldsPage() {
         calcType: 'signed',
         groupSplit: 0,
         userOnlyEdit: false,
+        visibleTo: [],
       },
     ]);
     toast.info(`"${fieldName}" added. Click Save to keep it.`);
@@ -264,6 +285,26 @@ export default function FieldsPage() {
     setBoxEditor(null);
   }
 
+  function setVisibleToEveryone(index: number) {
+    updateRow(index, { visibleTo: [] });
+  }
+
+  // Switches into "only selected" mode. Everyone starts checked (visible) so nothing
+  // changes until the admin unchecks specific accounts to hide it from them.
+  function restrictVisibility(index: number) {
+    updateRow(index, { visibleTo: allAccounts.map((account) => account._id) });
+  }
+
+  // Called from a checkbox meaning "this account can see the field" — toggles its
+  // membership in visibleTo accordingly.
+  function toggleAccountVisible(index: number, accountId: string) {
+    const row = rows[index];
+    const canSee = row.visibleTo.includes(accountId);
+    updateRow(index, {
+      visibleTo: canSee ? row.visibleTo.filter((id) => id !== accountId) : [...row.visibleTo, accountId],
+    });
+  }
+
   async function save() {
     setSaving(true);
     const saved: FieldRow[] = [...rows];
@@ -277,16 +318,19 @@ export default function FieldsPage() {
           calcType: row.calcType,
           groupSplit: row.groupSplit,
           icon: row.icon,
+          color: row.color,
           boxIcons: row.boxIcons,
           boxColors: row.boxColors,
           boxFields: row.boxFields,
           userOnlyEdit: row.userOnlyEdit,
+          visibleTo: row.visibleTo,
         };
         const result = row._id ? await api.updateField(row._id, payload) : await api.createField(payload);
         saved[index] = {
           _id: result._id,
           name: result.name,
           icon: result.icon || '',
+          color: result.color || '',
           boxNames: result.boxNames,
           boxIcons: result.boxNames.map((_: string, i: number) => result.boxIcons?.[i] || ''),
           boxColors: result.boxNames.map((_: string, i: number) => result.boxColors?.[i] || ''),
@@ -294,6 +338,7 @@ export default function FieldsPage() {
           calcType: result.calcType,
           groupSplit: result.groupSplit,
           userOnlyEdit: Boolean(result.userOnlyEdit),
+          visibleTo: Array.isArray(result.visibleTo) ? result.visibleTo : [],
         };
       }
       setRows(saved);
@@ -306,7 +351,7 @@ export default function FieldsPage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-blue-900/50">Loading fields...</p>;
+  if (loading) return <p className="text-sm text-black">Loading fields...</p>;
 
   const indexedRows = rows.map((row, index) => ({ row, index }));
 
@@ -314,7 +359,7 @@ export default function FieldsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Admin settings</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-900">Admin settings</p>
           <h1 className="font-display text-2xl text-blue-950">Fields</h1>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -330,14 +375,14 @@ export default function FieldsPage() {
       </div>
 
       {!canEdit && (
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 px-5 py-3 text-xs font-medium text-blue-700">
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 px-5 py-3 text-xs font-medium text-blue-950">
           You can view fields but only a super admin can make changes.
         </div>
       )}
 
       <section className="rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-blue-900/55">Final Total card</p>
-        <p className="mb-4 text-xs text-blue-900/45">Change the text, icon and operator used to combine field totals on the entry page and Reports table.</p>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-black">Final Total card</p>
+        <p className="mb-4 text-xs text-black">Change the text, icon and operator used to combine field totals on the entry page and Reports table.</p>
         <div className="flex flex-wrap items-end gap-3">
           <IconPicker value={finalTotalIcon} onChange={setFinalTotalIconState} disabled={!canEdit} />
           <input
@@ -381,10 +426,18 @@ export default function FieldsPage() {
         </div>
       )}
 
-      {indexedRows.map(({ row, index }) => (
-        <section key={row._id || `new-${index}`} className="rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
+      {indexedRows.map(({ row, index }) => {
+        // A field's color is a decorative accent (the stripe below) only — it never
+        // recolors the IconPicker/FieldIcon glyph, which always keeps its own fixed color.
+        const fieldAccentHex = boxColorHex(row.color);
+        return (
+        <section key={row._id || `new-${index}`} className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
+          {fieldAccentHex && (
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-1" style={{ backgroundColor: fieldAccentHex }} />
+          )}
           <div className="mb-5 flex items-center gap-3">
             <IconPicker value={row.icon} onChange={(icon) => updateRow(index, { icon })} disabled={!canEdit} />
+            <ColorPicker value={row.color} onChange={(color) => updateRow(index, { color })} disabled={!canEdit} />
             <input
               aria-label="Field name"
               value={row.name}
@@ -394,13 +447,13 @@ export default function FieldsPage() {
             />
             {canEdit && (
               <div className="flex shrink-0 items-center gap-1">
-                <button type="button" onClick={() => moveField(index, -1)} disabled={index === 0} aria-label="Move up" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-800 disabled:opacity-30">
+                <button type="button" onClick={() => moveField(index, -1)} disabled={index === 0} aria-label="Move up" className="rounded-lg p-2 text-black hover:bg-blue-50 hover:text-blue-800 disabled:opacity-30">
                   <FiChevronUp size={15} />
                 </button>
-                <button type="button" onClick={() => moveField(index, 1)} disabled={index === rows.length - 1} aria-label="Move down" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-800 disabled:opacity-30">
+                <button type="button" onClick={() => moveField(index, 1)} disabled={index === rows.length - 1} aria-label="Move down" className="rounded-lg p-2 text-black hover:bg-blue-50 hover:text-blue-800 disabled:opacity-30">
                   <FiChevronDown size={15} />
                 </button>
-                <button type="button" onClick={() => removeField(index)} aria-label="Remove field" className="rounded-lg p-2 text-blue-900/30 hover:bg-red-50 hover:text-red-600">
+                <button type="button" onClick={() => removeField(index)} aria-label="Remove field" className="rounded-lg p-2 text-black hover:bg-red-50 hover:text-red-600">
                   <FiTrash2 size={15} />
                 </button>
               </div>
@@ -422,14 +475,14 @@ export default function FieldsPage() {
           </div>
 
           {canEdit && (
-            <button type="button" onClick={() => addBox(index)} className="mb-5 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
+            <button type="button" onClick={() => addBox(index)} className="mb-5 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-blue-950 hover:bg-blue-50">
               <FiPlus /> Add box
             </button>
           )}
 
           <div className="flex flex-col lg:flex-row items-center lg:justify-between gap-3">
             <div className="">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/55">Calculation (how box values combine into this field's total)</p>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-black">Calculation (how box values combine into this field's total)</p>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
@@ -448,7 +501,7 @@ export default function FieldsPage() {
                   Sum by sign (+ / −)
                 </button>
                 {row.calcType === 'grouped' && (
-                  <label className="ml-2 flex items-center gap-2 text-xs font-medium text-blue-900/65">
+                  <label className="ml-2 flex items-center gap-2 text-xs font-medium text-black">
                     Split after box
                     <input
                       type="number"
@@ -464,14 +517,14 @@ export default function FieldsPage() {
                       }}
                       className={`w-16 rounded-lg border border-blue-100 px-2 py-1.5 text-center text-sm text-blue-950 outline-none ${canEdit ? 'bg-blue-50/50 focus:border-blue-400' : 'bg-transparent cursor-default'}`}
                     />
-                    <span className="text-blue-900/45">of {row.boxNames.length}</span>
+                    <span className="text-black">of {row.boxNames.length}</span>
                   </label>
                 )}
               </div>
             </div>
 
             <div>
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-blue-900/55 lg:text-right">Work assignment</p>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-black lg:text-right">Work assignment</p>
               <button
                 type="button"
                 disabled={!canEdit}
@@ -485,9 +538,26 @@ export default function FieldsPage() {
                 {row.userOnlyEdit ? 'User work (Admin view only)' : 'Admin work (User view only)'}
               </button>
             </div>
+
+            <div>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-black lg:text-right">Visibility</p>
+              <button
+                type="button"
+                disabled={!canEdit}
+                onClick={() => canEdit && setVisibilityEditor(index)}
+                title="Choose which users or admins can see this field"
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition disabled:cursor-default disabled:opacity-60 ${
+                  row.visibleTo.length > 0 ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-blue-200 bg-white text-blue-800 hover:bg-blue-50'
+                }`}
+              >
+                {row.visibleTo.length > 0 ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                {row.visibleTo.length > 0 ? `Visible to ${row.visibleTo.length} selected` : 'Visible to everyone'}
+              </button>
+            </div>
           </div>
         </section>
-      ))}
+        );
+      })}
 
       {canEdit && confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="fields-confirm-title">
@@ -498,7 +568,7 @@ export default function FieldsPage() {
             <h2 id="fields-confirm-title" className="font-display text-2xl text-blue-950">
               Remove field?
             </h2>
-            <p className="mt-2 text-sm text-blue-900/55">
+            <p className="mt-2 text-sm text-black">
               {`"${confirmDelete.name}" will be permanently removed.`}
             </p>
             <div className="mt-6 flex gap-3">
@@ -526,14 +596,14 @@ export default function FieldsPage() {
           <div className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-600">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-900">
                   {rows[boxEditor.index].name || 'Field'}
                 </p>
                 <h2 id="box-editor-title" className="font-display text-xl text-blue-950">
                   {rows[boxEditor.index].boxNames[boxEditor.boxIndex] || `Box ${boxEditor.boxIndex + 1}`}
                 </h2>
               </div>
-              <button type="button" onClick={closeBoxEditor} aria-label="Close" className="rounded-lg p-2 text-blue-900/40 hover:bg-blue-50 hover:text-blue-700">
+              <button type="button" onClick={closeBoxEditor} aria-label="Close" className="rounded-lg p-2 text-black hover:bg-blue-50 hover:text-blue-950">
                 <FiX size={18} />
               </button>
             </div>
@@ -560,6 +630,104 @@ export default function FieldsPage() {
 
             <div className="flex gap-3 border-t border-blue-100 bg-blue-50/60 px-5 py-4">
               <button type="button" onClick={closeBoxEditor} className="flex-1 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {canEdit && visibilityEditor !== null && rows[visibilityEditor] && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/45 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="visibility-editor-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setVisibilityEditor(null);
+          }}
+        >
+          <div className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-900">Visibility</p>
+                <h2 id="visibility-editor-title" className="font-display text-xl text-blue-950">
+                  {rows[visibilityEditor].name || 'Field'}
+                </h2>
+              </div>
+              <button type="button" onClick={() => setVisibilityEditor(null)} aria-label="Close" className="rounded-lg p-2 text-black hover:bg-blue-50 hover:text-blue-950">
+                <FiX size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto p-5">
+              <p className="text-xs text-black">
+                Choose which users or admins can see this field on their entry and reports pages. Super Admin always sees every field.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setVisibleToEveryone(visibilityEditor)}
+                className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-medium transition ${
+                  rows[visibilityEditor].visibleTo.length === 0 ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-blue-100 bg-white text-blue-800 hover:bg-blue-50'
+                }`}
+              >
+                <span className="flex items-center gap-2"><FiEye size={15} /> Visible to everyone</span>
+                {rows[visibilityEditor].visibleTo.length === 0 && <FiCheck size={15} />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => restrictVisibility(visibilityEditor)}
+                className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-medium transition ${
+                  rows[visibilityEditor].visibleTo.length > 0 ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-blue-100 bg-white text-blue-800 hover:bg-blue-50'
+                }`}
+              >
+                <span className="flex items-center gap-2"><FiEyeOff size={15} /> Only selected users/admins</span>
+                {rows[visibilityEditor].visibleTo.length > 0 && <FiCheck size={15} />}
+              </button>
+
+              {rows[visibilityEditor].visibleTo.length > 0 && (
+                <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-3">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-black">
+                    Checked accounts can see this field
+                  </p>
+                  {allAccounts.length === 0 && (
+                    <p className="text-xs text-black">No users or admins found yet.</p>
+                  )}
+                  {(['admin', 'user'] as const).map((roleKey) => {
+                    const group = allAccounts.filter((account) => account.role === roleKey);
+                    if (group.length === 0) return null;
+                    return (
+                      <div key={roleKey} className="mb-3 last:mb-0">
+                        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-black">
+                          {roleKey === 'admin' ? 'Admins' : 'Users'}
+                        </p>
+                        <div className="space-y-1">
+                          {group.map((account) => (
+                            <label key={account._id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-blue-900 hover:bg-white">
+                              <input
+                                type="checkbox"
+                                checked={rows[visibilityEditor].visibleTo.includes(account._id)}
+                                onChange={() => toggleAccountVisible(visibilityEditor, account._id)}
+                                className="h-3.5 w-3.5 rounded border-blue-300 text-blue-900 focus:ring-blue-500"
+                              />
+                              <span className="min-w-0 flex-1 truncate">
+                                <span className="font-medium">{account.name}</span>
+                                <span className="ml-1 text-black">{account.email}</span>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 border-t border-blue-100 bg-blue-50/60 px-5 py-4">
+              <button type="button" onClick={() => setVisibilityEditor(null)} className="flex-1 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
                 Done
               </button>
             </div>
@@ -593,15 +761,14 @@ function BoxTile({
       aria-label={`${name || `Box ${boxIndex + 1}`}, click to edit`}
       className="group flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/30 p-2 text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_10px_24px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
     >
-      <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700"
-        style={hex ? { backgroundColor: `${hex}1a`, color: hex } : undefined}
-      >
+      {/* The icon badge always keeps its default blue color — box color (hex) is used
+          for the little dot below only, never to tint the icon itself. */}
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-950">
         <FieldIcon icon={icon} size={15} />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-xs font-semibold text-blue-950">{name || `Box ${boxIndex + 1}`}</span>
-        <span className="block text-[10px] font-medium uppercase tracking-wider text-blue-900/40">
+        <span className="block text-[10px] font-medium uppercase tracking-wider text-black">
           {columnCount} column{columnCount === 1 ? '' : 's'}
         </span>
       </span>
@@ -666,7 +833,7 @@ function BoxEditor({
       <div className="flex items-end gap-1.5">
         <IconPicker size="sm" value={boxIcon} onChange={onIconChange} disabled={!canEdit} />
         <ColorPicker size="sm" value={boxColor} onChange={onColorChange} disabled={!canEdit} />
-        <label className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-blue-900/55">
+        <label className="flex-1 text-[10px] font-semibold uppercase tracking-wider text-black">
           Box {boxIndex + 1}
           <input
             value={boxName}
@@ -681,7 +848,7 @@ function BoxEditor({
             onClick={onRemove}
             disabled={!canRemove}
             aria-label="Remove box"
-            className="mt-4 rounded-lg p-2 text-blue-900/30 hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
+            className="mt-4 rounded-lg p-2 text-black hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
           >
             <FiTrash2 size={14} />
           </button>
@@ -690,27 +857,27 @@ function BoxEditor({
 
       <div className="mt-3 border-t border-blue-100 pt-3">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-900/45">Inner table columns</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-black">Inner table columns</p>
           {canEdit && (
             <div className="flex gap-1.5">
               <button
                 type="button"
                 onClick={() => onFieldsChange(TEAM_BOX_FIELDS)}
-                className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-50"
+                className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-[10px] font-semibold text-blue-950 hover:bg-blue-50"
               >
                 Use Team Box template
               </button>
               <button
                 type="button"
                 onClick={() => onFieldsChange(CURRENCY_BOX_FIELDS)}
-                className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-50"
+                className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-[10px] font-semibold text-blue-950 hover:bg-blue-50"
               >
                 Use Currency Conversion template
               </button>
               <button
                 type="button"
                 onClick={() => onFieldsChange(CRYPTO_BOX_FIELDS)}
-                className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-50"
+                className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-[10px] font-semibold text-blue-950 hover:bg-blue-50"
               >
                 Use Crypto template
               </button>
@@ -718,7 +885,7 @@ function BoxEditor({
                 <button
                   type="button"
                   onClick={() => onFieldsChange(SIMPLE_BOX_FIELDS)}
-                  className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-50"
+                  className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-[10px] font-semibold text-blue-950 hover:bg-blue-50"
                 >
                   Reset to simple
                 </button>
@@ -776,7 +943,7 @@ function BoxEditor({
                 </select>
               )}
               {col.type === 'number' && col.auto === 'constant' && (
-                <label className="flex items-center gap-1 text-[10px] font-medium text-blue-900/60">
+                <label className="flex items-center gap-1 text-[10px] font-medium text-black">
                   Fixed at
                   <input
                     type="number"
@@ -788,13 +955,13 @@ function BoxEditor({
                 </label>
               )}
               {(col.type === 'number' || col.type === 'computed') && (
-                <label className="flex items-center gap-1 text-[10px] font-medium text-blue-900/60">
+                <label className="flex items-center gap-1 text-[10px] font-medium text-black">
                   <input
                     type="checkbox"
                     checked={Boolean(col.sumTotal)}
                     disabled={!canEdit}
                     onChange={(event) => updateColumn(colIndex, { sumTotal: event.target.checked, sumSign: event.target.checked ? col.sumSign : undefined })}
-                    className="h-3.5 w-3.5 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                    className="h-3.5 w-3.5 rounded border-blue-300 text-blue-900 focus:ring-blue-500"
                   />
                   Total
                 </label>
@@ -851,7 +1018,7 @@ function BoxEditor({
                   onClick={() => removeColumn(colIndex)}
                   disabled={boxFields.length <= 1}
                   aria-label="Remove column"
-                  className="rounded-lg p-1.5 text-blue-900/30 hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
+                  className="rounded-lg p-1.5 text-black hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
                 >
                   <FiTrash2 size={12} />
                 </button>
@@ -861,7 +1028,7 @@ function BoxEditor({
         </div>
 
         {canEdit && (
-          <button type="button" onClick={addColumn} className="mt-2 flex items-center gap-1 text-[11px] font-medium text-blue-700 hover:underline">
+          <button type="button" onClick={addColumn} className="mt-2 flex items-center gap-1 text-[11px] font-medium text-blue-950 hover:underline">
             <FiPlus size={12} /> Add column
           </button>
         )}

@@ -134,9 +134,9 @@ export const api = {
 
   getFields: () => request('/fields'),
   getFieldEditLocks: (): Promise<{ name: string; userOnlyEdit: boolean }[]> => request('/fields/edit-locks'),
-  createField: (payload: { name: string; order?: number; boxNames: string[]; icon?: string; boxIcons?: string[]; boxColors?: string[]; boxFields?: BoxFieldDef[][]; userOnlyEdit?: boolean }) =>
+  createField: (payload: { name: string; order?: number; boxNames: string[]; icon?: string; color?: string; boxIcons?: string[]; boxColors?: string[]; boxFields?: BoxFieldDef[][]; userOnlyEdit?: boolean; visibleTo?: string[] }) =>
     request('/fields', { method: 'POST', body: JSON.stringify(payload) }, { success: 'Field added.' }),
-  updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; calcType?: string; groupSplit?: number; icon?: string; boxIcons?: string[]; boxColors?: string[]; boxFields?: BoxFieldDef[][]; userOnlyEdit?: boolean }) =>
+  updateField: (id: string, payload: { name: string; order?: number; boxNames: string[]; calcType?: string; groupSplit?: number; icon?: string; color?: string; boxIcons?: string[]; boxColors?: string[]; boxFields?: BoxFieldDef[][]; userOnlyEdit?: boolean; visibleTo?: string[] }) =>
     request(`/fields/${id}`, { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Field changes saved.' }),
   deleteField: (id: string) => request(`/fields/${id}`, { method: 'DELETE' }, { success: 'Field removed.' }),
 

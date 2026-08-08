@@ -12,6 +12,8 @@ import { toast } from '@/lib/toast';
 type FieldConfig = {
   name: string;
   icon?: string;
+  // Decorative accent only — never applied to the field icon's own color.
+  color?: string;
   boxNames: string[];
   boxIcons?: string[];
   boxColors?: string[];
@@ -48,6 +50,7 @@ function fieldConfigFromApi(raw: any, index: number, role: string): FieldConfig 
   return {
     name: typeof raw.name === 'string' && raw.name.trim() ? raw.name : `Field ${index + 1}`,
     icon: typeof raw.icon === 'string' ? raw.icon : '',
+    color: typeof raw.color === 'string' ? raw.color : '',
     boxNames,
     boxIcons: Array.isArray(raw.boxIcons) ? boxNames.map((_, i) => raw.boxIcons[i] || '') : undefined,
     boxColors: Array.isArray(raw.boxColors) ? boxNames.map((_, i) => raw.boxColors[i] || '') : undefined,
@@ -64,6 +67,7 @@ function blankField(config: FieldConfig): FieldValue {
   return {
     name: config.name,
     icon: config.icon,
+    color: config.color,
     boxNames: [...config.boxNames],
     boxIcons: config.boxIcons ? [...config.boxIcons] : undefined,
     boxColors: config.boxColors ? [...config.boxColors] : undefined,
@@ -84,6 +88,7 @@ function fieldFromSaved(config: FieldConfig, saved: any): FieldValue {
   return {
     name: config.name,
     icon: config.icon,
+    color: config.color,
     boxNames: [...config.boxNames],
     boxIcons: config.boxIcons ? [...config.boxIcons] : undefined,
     boxColors: config.boxColors ? [...config.boxColors] : undefined,
@@ -404,7 +409,7 @@ export default function NewEntryPage() {
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/25 border-t-white" />
           </div>
           <p className="font-display text-lg font-semibold text-blue-950">Preparing your workspace</p>
-          <p className="mt-1 text-xs text-blue-900/45">Loading fields and saved values...</p>
+          <p className="mt-1 text-xs text-black">Loading fields and saved values...</p>
         </div>
       </div>
     );
@@ -446,34 +451,34 @@ export default function NewEntryPage() {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-blue-300 to-transparent" />
         <div className="grid gap-2 lg:grid-cols-[minmax(16rem,1fr)_auto_auto] lg:items-stretch">
           <label className="group relative flex min-w-0 items-center gap-2.5 rounded-xl border border-blue-100 bg-blue-50/35 px-3 py-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-950">
               <FiUser size={15} aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[7px] font-semibold uppercase tracking-[0.17em] text-blue-900/40">Team report</span>
+              <span className="block text-[7px] font-semibold uppercase tracking-[0.17em] text-black">Team report</span>
               <input
                 value={name}
                 readOnly
                 placeholder="Enter a record name"
-                className="mt-0.5 w-full cursor-default border-0 bg-transparent p-0 text-sm font-semibold text-blue-950 outline-none placeholder:font-normal placeholder:text-blue-900/25"
+                className="mt-0.5 w-full cursor-default border-0 bg-transparent p-0 text-sm font-semibold text-blue-950 outline-none placeholder:font-normal placeholder:text-black"
               />
             </span>
           </label>
 
           <div className="relative inline-flex items-stretch rounded-xl border border-blue-100 bg-white p-1">
             <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-blue-950">
-              <FiClock size={14} className="text-blue-600" aria-hidden="true" />
+              <FiClock size={14} className="text-blue-900" aria-hidden="true" />
               <span>
-                <span className="block text-[6px] font-semibold uppercase tracking-[0.16em] text-blue-900/35">Time</span>
+                <span className="block text-[6px] font-semibold uppercase tracking-[0.16em] text-black">Time</span>
                 <span className="block font-mono text-xs font-semibold leading-tight">
                   {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </span>
             </div>
             <label className="group relative ml-1 flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 transition hover:bg-blue-50">
-              <FiCalendar size={14} className="text-blue-600" aria-hidden="true" />
+              <FiCalendar size={14} className="text-blue-900" aria-hidden="true" />
               <span className="min-w-[7rem]">
-                <span className="block text-[6px] font-semibold uppercase tracking-[0.16em] text-blue-900/35">Date</span>
+                <span className="block text-[6px] font-semibold uppercase tracking-[0.16em] text-black">Date</span>
                 <span className="block font-mono text-[11px] font-semibold leading-tight text-blue-950">
                   {date ? new Date(`${date}T00:00:00`).toLocaleDateString([], {
                     day: '2-digit',
@@ -498,7 +503,7 @@ export default function NewEntryPage() {
           <div className="relative flex items-stretch">
             <span className="flex min-w-[4.25rem] flex-col items-center justify-center rounded-xl border border-blue-100 bg-blue-50/50 px-3">
               <span className="font-mono text-base font-semibold leading-none text-blue-800">{fields.length}</span>
-              <span className="mt-1 text-[7px] font-semibold uppercase tracking-[0.15em] text-blue-900/35">
+              <span className="mt-1 text-[7px] font-semibold uppercase tracking-[0.15em] text-black">
                 {fields.length === 1 ? 'Field' : 'Fields'}
               </span>
             </span>
@@ -519,7 +524,7 @@ export default function NewEntryPage() {
         <button
           type="button"
           onClick={handleCancel}
-          className="flex items-center gap-1.5 rounded-xl border border-blue-100 bg-white px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/20"
+          className="flex items-center gap-1.5 rounded-xl border border-blue-100 bg-white px-3.5 py-2 text-xs font-semibold text-blue-950 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/20"
         >
           <FiX size={14} /> Cancel
         </button>

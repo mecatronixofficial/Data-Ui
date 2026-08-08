@@ -128,22 +128,22 @@ export default function AdminsPage() {
         </div>
         <div className="grid grid-cols-1 items-end gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Name</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Name</label>
             <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Unique team name</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Unique team name</label>
             <input required value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Example: North Production"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Email</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Email</label>
             <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Password</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Password</label>
             <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimum 6 characters"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
@@ -169,7 +169,7 @@ export default function AdminsPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <thead>
-              <tr className="border-b border-blue-100 bg-blue-50/60 text-left text-xs uppercase tracking-wider text-blue-900/55">
+              <tr className="border-b border-blue-100 bg-blue-50/60 text-left text-xs uppercase tracking-wider text-black">
                 <th className="px-5 py-3 font-medium">Name</th>
                 <th className="px-5 py-3 font-medium">Team name</th>
                 <th className="px-5 py-3 font-medium">Email</th>
@@ -180,14 +180,14 @@ export default function AdminsPage() {
             <tbody>
               {loading && (
                 <tr><td colSpan={5} className="px-5 py-10 text-center">
-                  <div className="flex items-center justify-center gap-2 text-blue-900/40">
+                  <div className="flex items-center justify-center gap-2 text-black">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-500" />
                     <span className="font-mono text-xs">loading…</span>
                   </div>
                 </td></tr>
               )}
               {!loading && admins.length === 0 && (
-                <tr><td colSpan={5} className="px-5 py-10 text-center text-sm text-blue-900/40">No admins yet.</td></tr>
+                <tr><td colSpan={5} className="px-5 py-10 text-center text-sm text-black">No admins yet.</td></tr>
               )}
               {!loading && admins.map((a) => {
                 const teamMembers = users.filter((u) => u.assignedAdminId === a._id);
@@ -196,16 +196,16 @@ export default function AdminsPage() {
                 <>
                 <tr key={a._id} className="border-b border-blue-50 transition last:border-0 hover:bg-blue-50/40">
                   <td className="px-5 py-4 font-medium text-blue-950">{a.name}</td>
-                  <td className="px-5 py-3 font-semibold text-blue-700">{a.teamName || 'Legacy team'}</td>
-                  <td className="px-5 py-3 text-blue-900/60">{a.email}</td>
+                  <td className="px-5 py-3 font-semibold text-blue-950">{a.teamName || 'Legacy team'}</td>
+                  <td className="px-5 py-3 text-black">{a.email}</td>
                   <td className="px-5 py-3">
                     <button
                       onClick={() => teamMembers.length > 0 && setExpandedId(isExpanded ? null : a._id)}
                       disabled={teamMembers.length === 0}
                       className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${
                         teamMembers.length > 0
-                          ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                          : 'text-blue-900/35'
+                          ? 'bg-blue-50 text-blue-950 hover:bg-blue-100'
+                          : 'text-black'
                       }`}
                     >
                       {teamMembers.length > 0 && (isExpanded ? <FiChevronDown size={13} /> : <FiChevronRight size={13} />)}
@@ -230,21 +230,21 @@ export default function AdminsPage() {
                       <button
                         onClick={() => setEditing(a)}
                         aria-label="Edit profile" title="Edit profile"
-                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-600 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-900 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
                       >
                         <FiEdit2 size={14} />
                       </button>
                       <button
                         onClick={() => setResetting(a)}
                         aria-label="Reset password" title="Reset password"
-                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-600 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-900 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
                       >
                         <FiKey size={14} />
                       </button>
                       <button
                         onClick={() => setDeleting(a)}
                         aria-label="Remove admin" title="Remove admin"
-                        className="rounded-lg p-2 text-blue-900/30 transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                        className="rounded-lg p-2 text-black transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
                       >
                         <FiTrash2 size={14} />
                       </button>
@@ -260,11 +260,11 @@ export default function AdminsPage() {
                             className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium ${
                               u.isActive === false
                                 ? 'border-red-100 bg-red-50 text-red-600'
-                                : 'border-blue-100 bg-white text-blue-900/70'
+                                : 'border-blue-100 bg-white text-black'
                             }`}
                           >
                             {u.name}
-                            <span className="text-blue-900/40">{u.email}</span>
+                            <span className="text-black">{u.email}</span>
                           </span>
                         ))}
                       </div>

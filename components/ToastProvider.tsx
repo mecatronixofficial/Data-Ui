@@ -114,7 +114,7 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
                   <span className="scale-90"><ToneIcon tone={item.tone} /></span>
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-blue-900/45">{item.title || style.title}</p>
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-black">{item.title || style.title}</p>
                   <p className="mt-0.5 break-words text-xs font-medium leading-4 text-blue-950/85">{item.message}</p>
                 </div>
               </div>
@@ -122,7 +122,7 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
                 type="button"
                 onClick={() => dismiss(item.id)}
                 aria-label="Dismiss notification"
-                className="absolute right-1.5 top-1.5 rounded-md p-1.5 text-blue-900/30 transition hover:bg-blue-50 hover:text-blue-800"
+                className="absolute right-1.5 top-1.5 rounded-md p-1.5 text-black transition hover:bg-blue-50 hover:text-blue-800"
               >
                 <FiX size={15} />
               </button>

@@ -46,13 +46,13 @@ export default function ConfirmDeleteModal({
             </div>
           </div>
           <button onClick={onClose} disabled={deleting}
-            aria-label="Close" className="rounded-lg p-1.5 text-blue-900/40 hover:bg-blue-50 hover:text-blue-700">
+            aria-label="Close" className="rounded-lg p-1.5 text-black hover:bg-blue-50 hover:text-blue-950">
             <FiX size={16} />
           </button>
         </div>
 
         <div className="px-6 py-5">
-          <p className="text-sm text-blue-900/70">{message}</p>
+          <p className="text-sm text-black">{message}</p>
 
           <div className="mt-6 flex justify-end gap-3 border-t border-blue-100 pt-4">
             <button type="button" onClick={onClose} disabled={deleting}

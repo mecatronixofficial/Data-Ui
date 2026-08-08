@@ -71,7 +71,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-20 text-blue-900/40">
+      <div className="flex items-center justify-center gap-2 py-20 text-black">
         <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-500" />
         <span className="font-mono text-xs">loading…</span>
       </div>
@@ -119,12 +119,12 @@ export default function SettingsPage() {
         </div>
         <div className="grid grid-cols-1 items-end gap-5 sm:grid-cols-2">
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Name</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Name</label>
             <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Email</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Email</label>
             <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
@@ -150,17 +150,17 @@ export default function SettingsPage() {
         </div>
         <div className="grid grid-cols-1 items-end gap-5 sm:grid-cols-3">
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Current password</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Current password</label>
             <input required type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Current password"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">New password</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">New password</label>
             <input required type="password" minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Minimum 6 characters"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Confirm new password</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Confirm new password</label>
             <input required type="password" minLength={6} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repeat new password"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>

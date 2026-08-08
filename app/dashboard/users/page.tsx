@@ -128,22 +128,22 @@ export default function UsersPage() {
         </div>
         <div className="grid grid-cols-1 items-end gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Name</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Name</label>
             <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Email</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Email</label>
             <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Password</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Password</label>
             <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimum 6 characters"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Select admin</label>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Select admin</label>
             <select required value={assignedAdminId} onChange={(e) => setAssignedAdminId(e.target.value)}
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15">
               <option value="" disabled>Choose an admin</option>
@@ -154,7 +154,7 @@ export default function UsersPage() {
           </div>
           <div className="sm:col-span-2 lg:col-span-4">
             {!loading && admins.length === 0 && (
-              <p className="mb-3 text-xs text-blue-900/50">No admin accounts yet — create one on the Admins page first.</p>
+              <p className="mb-3 text-xs text-black">No admin accounts yet — create one on the Admins page first.</p>
             )}
             <button type="submit" disabled={creating || admins.length === 0}
               className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,107,196,0.45)] active:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0">
@@ -177,7 +177,7 @@ export default function UsersPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <thead>
-              <tr className="border-b border-blue-100 bg-blue-50/60 text-left text-xs uppercase tracking-wider text-blue-900/55">
+              <tr className="border-b border-blue-100 bg-blue-50/60 text-left text-xs uppercase tracking-wider text-black">
                 <th className="px-5 py-3 font-medium">Name</th>
                 <th className="px-5 py-3 font-medium">Email</th>
                 <th className="px-5 py-3 font-medium">Team</th>
@@ -187,20 +187,20 @@ export default function UsersPage() {
             <tbody>
               {loading && (
                 <tr><td colSpan={4} className="px-5 py-10 text-center">
-                  <div className="flex items-center justify-center gap-2 text-blue-900/40">
+                  <div className="flex items-center justify-center gap-2 text-black">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-500" />
                     <span className="font-mono text-xs">loading…</span>
                   </div>
                 </td></tr>
               )}
               {!loading && users.length === 0 && (
-                <tr><td colSpan={4} className="px-5 py-10 text-center text-sm text-blue-900/40">No users yet.</td></tr>
+                <tr><td colSpan={4} className="px-5 py-10 text-center text-sm text-black">No users yet.</td></tr>
               )}
               {!loading && users.map((u) => (
                 <tr key={u._id} className="border-b border-blue-50 transition last:border-0 hover:bg-blue-50/40">
                   <td className="px-5 py-4 font-medium text-blue-950">{u.name}</td>
-                  <td className="px-5 py-3 text-blue-900/60">{u.email}</td>
-                  <td className="px-5 py-3 text-blue-900/60">
+                  <td className="px-5 py-3 text-black">{u.email}</td>
+                  <td className="px-5 py-3 text-black">
                     {u.assignedAdminId
                       ? (adminById.get(u.assignedAdminId)?.teamName || adminById.get(u.assignedAdminId)?.name || '—')
                       : '—'}
@@ -223,21 +223,21 @@ export default function UsersPage() {
                       <button
                         onClick={() => setEditing(u)}
                         aria-label="Edit profile" title="Edit profile"
-                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-600 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-900 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
                       >
                         <FiEdit2 size={14} />
                       </button>
                       <button
                         onClick={() => setResetting(u)}
                         aria-label="Reset password" title="Reset password"
-                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-600 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-blue-900 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
                       >
                         <FiKey size={14} />
                       </button>
                       <button
                         onClick={() => setDeleting(u)}
                         aria-label="Remove user" title="Remove user"
-                        className="rounded-lg p-2 text-blue-900/30 transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                        className="rounded-lg p-2 text-black transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
                       >
                         <FiTrash2 size={14} />
                       </button>

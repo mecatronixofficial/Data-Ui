@@ -6,6 +6,7 @@ import TallyBox, { type BoxDetail, type BoxFieldDef } from './TallyBox';
 import { type Operator } from './OperatorToggle';
 import TotalPill from './TotalPill';
 import { FieldIcon } from './IconPicker';
+import { boxColorHex } from './ColorPicker';
 import { type FinalTotalSign } from '@/lib/api';
 
 export type CalcType = 'grouped' | 'signed';
@@ -13,6 +14,9 @@ export type CalcType = 'grouped' | 'signed';
 export type FieldValue = {
   name: string;
   icon?: string;
+  // Decorative accent only (the card's top stripe) — never applied to the icon itself,
+  // which always keeps its own fixed color.
+  color?: string;
   boxNames: string[];
   boxIcons?: string[];
   boxColors?: string[];
@@ -68,19 +72,25 @@ export default function DynamicFieldsForm({
           const positiveTotal = sum(field.boxes.filter((v) => v > 0));
           const negativeTotal = sum(field.boxes.filter((v) => v < 0));
 
+          const accentHex = boxColorHex(field.color);
+
           return (
             <section
               key={field.name}
               className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_8px_28px_rgba(7,39,71,0.06)]"
             >
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-gradient-to-r from-blue-500 via-blue-300 to-transparent" />
+              {accentHex ? (
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5" style={{ backgroundColor: accentHex }} />
+              ) : (
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-gradient-to-r from-blue-500 via-blue-300 to-transparent" />
+              )}
               <div className="flex flex-col gap-3 border-b border-blue-100 bg-blue-50/25 p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 w-full items-center justify-between gap-3">
 
                   <div className="min-w-0">
                     <h2 className="inline-flex items-center w-full gap-2 truncate font-display text-base font-semibold text-blue-950">
                       {field.icon && (
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 font-display text-xs text-blue-700">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 font-display text-xs text-blue-950">
                           <FieldIcon icon={field.icon} size={16} />
                         </span>
                       )}
@@ -90,7 +100,7 @@ export default function DynamicFieldsForm({
                   <div className="min-w-0">
                     <h2 className="inline-flex items-center w-full gap-2 truncate font-display text-base font-semibold text-blue-950">
                       {field.locked && (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-blue-900/45">
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-black">
                           <FiLock size={9} /> View only
                         </span>
                       )}
@@ -103,7 +113,7 @@ export default function DynamicFieldsForm({
                     onClick={() => setConfirmIndex(fieldIndex)}
                     aria-label={`Reset ${field.name} values`}
                     title="Reset field values"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center self-end rounded-lg border border-transparent text-blue-900/35 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600 sm:self-auto"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center self-end rounded-lg border border-transparent text-black transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600 sm:self-auto"
                   >
                     <FiRefreshCw size={15} />
                   </button>
@@ -135,14 +145,14 @@ export default function DynamicFieldsForm({
                   <div className="flex shrink-0 items-center gap-2">
                     <TotalPill label="" value={groupA} />
                     <TotalPill label="" value={groupB} />
-                    <span className="font-display text-sm text-blue-900/20">=</span>
+                    <span className="font-display text-sm text-black">=</span>
                     <TotalPill label="" value={fieldTotal(field)} emphasize colorBySign />
                   </div>
                 ) : (
                   <div className="flex shrink-0 items-center gap-2">
                     <TotalPill label="" value={positiveTotal} colorBySign />
                     <TotalPill label="" value={negativeTotal} colorBySign />
-                    <span className="font-display text-sm text-blue-900/20">=</span>
+                    <span className="font-display text-sm text-black">=</span>
                     <TotalPill label="" value={fieldTotal(field)} emphasize colorBySign />
                   </div>
                 )}
@@ -168,7 +178,7 @@ export default function DynamicFieldsForm({
               type="button"
               onClick={() => setConfirmIndex(null)}
               aria-label="Close"
-              className="absolute right-2.5 top-2.5 rounded-lg p-1.5 text-blue-900/40 hover:bg-blue-50 hover:text-blue-700"
+              className="absolute right-2.5 top-2.5 rounded-lg p-1.5 text-black hover:bg-blue-50 hover:text-blue-950"
             >
               <FiX size={14} />
             </button>
@@ -180,7 +190,7 @@ export default function DynamicFieldsForm({
             <h2 id="reset-field-title" className="font-display text-base text-blue-950">
               Reset {fields[confirmIndex]?.name} values?
             </h2>
-            <p className="mt-2 text-xs text-blue-900/55">
+            <p className="mt-2 text-xs text-black">
               Are you sure you want to reset values? This will clear all box values for this field.
             </p>
 
@@ -239,11 +249,11 @@ export function FinalTotalCard({
 
       <div className="relative flex flex-col gap-3 xl:grid xl:grid-cols-[13rem_minmax(0,1fr)_auto] xl:items-center">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 font-display text-xs text-blue-700">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 font-display text-xs text-blue-950">
             {icon ? <FieldIcon icon={icon} size={15} /> : String(fields.length + 1).padStart(2, '0')}
           </span>
           <div className="min-w-0">
-            <p className="text-[8px] font-semibold uppercase tracking-[0.18em] text-blue-600/45">Summary</p>
+            <p className="text-[8px] font-semibold uppercase tracking-[0.18em] text-black">Summary</p>
             <h2 className="truncate font-display text-base font-semibold text-blue-950">{label}</h2>
           </div>
         </div>
@@ -267,7 +277,7 @@ export function FinalTotalCard({
         <div className={`flex min-w-[5rem] shrink-0 items-center justify-end rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2 ${single ? 'xl:col-start-3' : ''
           }`}>
           <span
-            className={`font-mono text-2xl font-semibold tracking-tight tabular ${finalTotal < 0 ? 'text-red-600' : finalTotal > 0 ? 'text-blue-700' : 'text-blue-950'
+            className={`font-mono text-2xl font-semibold tracking-tight tabular ${finalTotal < 0 ? 'text-red-600' : finalTotal > 0 ? 'text-blue-950' : 'text-blue-950'
               }`}
           >
             {finalTotal}

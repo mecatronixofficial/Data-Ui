@@ -94,7 +94,7 @@ export default function DashboardHome() {
       {/* ── Quick actions ── */}
       <section>
         <div className="mb-4">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Quick actions</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-900">Quick actions</p>
           <h2 className="font-display text-xl text-blue-950">What would you like to do?</h2>
         </div>
 
@@ -112,14 +112,14 @@ export default function DashboardHome() {
 
                 {/* icon */}
                 <div className="relative mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-transform duration-300 group-hover:scale-110">
-                  <Icon size={18} className="text-blue-600" aria-hidden="true" />
+                  <Icon size={18} className="text-blue-900" aria-hidden="true" />
                 </div>
 
                 {/* title + arrow */}
                 <div className="relative flex items-center justify-between gap-4">
                   <h3 className="font-display text-lg text-blue-950">{title}</h3>
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 transition-transform duration-300 group-hover:translate-x-1">
-                    <FiArrowRight size={13} className="text-blue-600" aria-hidden="true" />
+                    <FiArrowRight size={13} className="text-blue-900" aria-hidden="true" />
                   </div>
                 </div>
               </div>
@@ -127,7 +127,7 @@ export default function DashboardHome() {
           ))}
 
           {actions.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-blue-200 bg-white/60 p-6 text-center text-sm text-blue-900/50 sm:col-span-2">
+            <div className="rounded-2xl border border-dashed border-blue-200 bg-white/60 p-6 text-center text-sm text-black sm:col-span-2">
               No actions available for your account yet.
             </div>
           )}

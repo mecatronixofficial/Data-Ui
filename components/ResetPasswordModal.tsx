@@ -50,21 +50,21 @@ export default function ResetPasswordModal({
               <FiKey size={17} />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-600">Super Admin</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-900">Super Admin</p>
               <h2 id="reset-password-title" className="font-display text-xl text-blue-950">Reset password</h2>
             </div>
           </div>
           <button onClick={onClose} disabled={saving}
-            aria-label="Close" className="rounded-lg p-1.5 text-blue-900/40 hover:bg-blue-50 hover:text-blue-700">
+            aria-label="Close" className="rounded-lg p-1.5 text-black hover:bg-blue-50 hover:text-blue-950">
             <FiX size={16} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5">
-          <p className="mb-4 text-sm text-blue-900/60">
+          <p className="mb-4 text-sm text-black">
             Set a new password for <span className="font-semibold text-blue-950">{user.name}</span>.
           </p>
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">New password</label>
+          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">New password</label>
           <input
             required type="password" minLength={6} autoFocus
             value={password} onChange={(e) => setPassword(e.target.value)}

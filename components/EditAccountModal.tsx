@@ -53,12 +53,12 @@ export default function EditAccountModal({
               <FiUser size={17} />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-600">Super Admin</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-900">Super Admin</p>
               <h2 id="edit-account-title" className="font-display text-xl text-blue-950">Edit profile</h2>
             </div>
           </div>
           <button onClick={onClose} disabled={saving}
-            aria-label="Close" className="rounded-lg p-1.5 text-blue-900/40 hover:bg-blue-50 hover:text-blue-700">
+            aria-label="Close" className="rounded-lg p-1.5 text-black hover:bg-blue-50 hover:text-blue-950">
             <FiX size={16} />
           </button>
         </div>
@@ -66,18 +66,18 @@ export default function EditAccountModal({
         <form onSubmit={handleSubmit} className="px-6 py-5">
           <div className="space-y-4">
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Name</label>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Name</label>
               <input required autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name"
                 className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
             </div>
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Email</label>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Email</label>
               <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com"
                 className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
             </div>
             {user.role === 'admin' && (
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-blue-900/65">Unique team name</label>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Unique team name</label>
                 <input required value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Team name"
                   className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
               </div>
