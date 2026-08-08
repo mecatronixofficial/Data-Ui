@@ -1,15 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiChevronDown, FiChevronRight, FiEdit2, FiKey, FiPower, FiTrash2, FiUserPlus, FiUsers } from 'react-icons/fi';
+import { FiChevronDown, FiChevronRight, FiEdit2, FiKey, FiPower, FiShieldOff, FiTrash2, FiUserPlus, FiUsers } from 'react-icons/fi';
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import EditAccountModal from '@/components/EditAccountModal';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 
-type AdminRow = { _id: string; name: string; email: string; role: string; teamName?: string; assignedAdminId?: string | null; isActive?: boolean };
+type AdminRow = { _id: string; userId?: string; name: string; email: string; role: string; teamName?: string; assignedAdminId?: string | null; isActive?: boolean; mfaEnabled?: boolean };
+
+function nextAvailableUserId(prefix: string, accounts: AdminRow[]) {
+  const used = new Set(accounts.map((account) => account.userId?.toLocaleLowerCase()).filter(Boolean));
+  let sequence = 1;
+  while (used.has(`${prefix}${String(sequence).padStart(2, '0')}`.toLocaleLowerCase())) sequence += 1;
+  return `${prefix}${String(sequence).padStart(2, '0')}`;
+}
 
 export default function AdminsPage() {
   const router = useRouter();
@@ -19,11 +26,13 @@ export default function AdminsPage() {
   const [name, setName] = useState('');
   const [teamName, setTeamName] = useState('');
   const [email, setEmail] = useState('');
+  const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AdminRow | null>(null);
   const [resetting, setResetting] = useState<AdminRow | null>(null);
+  const [resettingMfa, setResettingMfa] = useState<AdminRow | null>(null);
   const [deleting, setDeleting] = useState<AdminRow | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -33,6 +42,7 @@ export default function AdminsPage() {
       const all: AdminRow[] = await api.listUsers();
       setAdmins(all.filter((u) => u.role === 'admin'));
       setUsers(all.filter((u) => u.role === 'user'));
+      setUserId((current) => current || nextAvailableUserId('Admin', all));
     } catch (err: any) {
       toast.error(err.message || 'Could not load admins');
     } finally {
@@ -53,8 +63,13 @@ export default function AdminsPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     const normalizedEmail = email.trim().toLocaleLowerCase();
+    const normalizedUserId = userId.trim();
     if (admins.some((a) => a.email.trim().toLocaleLowerCase() === normalizedEmail)) {
       toast.error(`An account with the email "${normalizedEmail}" already exists.`);
+      return;
+    }
+    if ([...admins, ...users].some((account) => account.userId?.toLocaleLowerCase() === normalizedUserId.toLocaleLowerCase())) {
+      toast.error(`The User ID "${normalizedUserId}" already exists.`);
       return;
     }
     const normalizedTeamName = teamName.trim().replace(/\s+/g, ' ');
@@ -64,8 +79,8 @@ export default function AdminsPage() {
     }
     setCreating(true);
     try {
-      await api.createUser({ name: name.trim(), teamName: normalizedTeamName, email: normalizedEmail, password, role: 'admin' });
-      setName(''); setTeamName(''); setEmail(''); setPassword('');
+      await api.createUser({ name: name.trim(), userId: normalizedUserId, teamName: normalizedTeamName, email: normalizedEmail, password, role: 'admin' });
+      setName(''); setUserId(''); setTeamName(''); setEmail(''); setPassword('');
       load();
     } catch {
       // The API client shows the error notification.
@@ -126,11 +141,18 @@ export default function AdminsPage() {
           </div>
           <h2 className="font-display text-xl text-blue-950">Create an admin</h2>
         </div>
-        <div className="grid grid-cols-1 items-end gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 items-end gap-5 sm:grid-cols-2 lg:grid-cols-5">
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Name</label>
             <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
+          </div>
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Login User ID</label>
+            <input required value={userId} minLength={3} maxLength={32} pattern="[A-Za-z][A-Za-z0-9._-]{2,31}"
+              autoCapitalize="none" spellCheck={false} onChange={(e) => setUserId(e.target.value)} placeholder="Admin01"
+              title="Start with a letter; use 3-32 letters, numbers, dots, underscores, or hyphens"
+              className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 font-mono text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Unique team name</label>
@@ -144,10 +166,10 @@ export default function AdminsPage() {
           </div>
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-black">Password</label>
-            <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimum 6 characters"
+            <input required type="password" minLength={12} maxLength={72} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimum 12 characters"
               className="w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
           </div>
-          <div className="sm:col-span-2 lg:col-span-4">
+          <div className="sm:col-span-2 lg:col-span-5">
             <button type="submit" disabled={creating}
               className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(0,107,196,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,107,196,0.45)] active:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0">
               <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
@@ -193,11 +215,19 @@ export default function AdminsPage() {
                 const teamMembers = users.filter((u) => u.assignedAdminId === a._id);
                 const isExpanded = expandedId === a._id;
                 return (
-                <>
-                <tr key={a._id} className="border-b border-blue-50 transition last:border-0 hover:bg-blue-50/40">
+                <Fragment key={a._id}>
+                <tr className="border-b border-blue-50 transition last:border-0 hover:bg-blue-50/40">
                   <td className="px-5 py-4 font-medium text-blue-950">{a.name}</td>
                   <td className="px-5 py-3 font-semibold text-blue-950">{a.teamName || 'Legacy team'}</td>
-                  <td className="px-5 py-3 text-black">{a.email}</td>
+                  <td className="px-5 py-3 text-black">
+                    <span className="block">{a.email}</span>
+                    <span className="mt-0.5 block select-all font-mono text-[10px] text-blue-700" title="Login user ID">
+                      User ID: {a.userId || 'Pending assignment'}
+                    </span>
+                    <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${a.mfaEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                      {a.mfaEnabled ? 'MFA active' : 'MFA setup pending'}
+                    </span>
+                  </td>
                   <td className="px-5 py-3">
                     <button
                       onClick={() => teamMembers.length > 0 && setExpandedId(isExpanded ? null : a._id)}
@@ -242,6 +272,14 @@ export default function AdminsPage() {
                         <FiKey size={14} />
                       </button>
                       <button
+                        onClick={() => setResettingMfa(a)}
+                        disabled={!a.mfaEnabled}
+                        aria-label="Reset authenticator" title={a.mfaEnabled ? 'Reset authenticator' : 'Authenticator is not enrolled'}
+                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-amber-700 transition hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-35"
+                      >
+                        <FiShieldOff size={14} />
+                      </button>
+                      <button
                         onClick={() => setDeleting(a)}
                         aria-label="Remove admin" title="Remove admin"
                         className="rounded-lg p-2 text-black transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
@@ -271,7 +309,7 @@ export default function AdminsPage() {
                     </td>
                   </tr>
                 )}
-                </>
+                </Fragment>
                 );
               })}
             </tbody>
@@ -294,6 +332,20 @@ export default function AdminsPage() {
           user={resetting}
           onClose={() => setResetting(null)}
           onDone={() => undefined}
+        />
+      )}
+
+      {resettingMfa && (
+        <ConfirmDeleteModal
+          variant="reset-mfa"
+          title="Reset authenticator"
+          message={`Reset ${resettingMfa.name}'s authenticator and recovery codes? They must scan a new QR code at their next sign-in.`}
+          onClose={() => setResettingMfa(null)}
+          onConfirm={async () => {
+            await api.resetAccountMfa(resettingMfa._id);
+            setAdmins((prev) => prev.map((admin) => admin._id === resettingMfa._id ? { ...admin, mfaEnabled: false } : admin));
+            setResettingMfa(null);
+          }}
         />
       )}
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiCheck, FiChevronDown, FiChevronUp, FiEye, FiEyeOff, FiLock, FiPlus, FiTrash2, FiX } from 'react-icons/fi';
+import { FiCheck, FiChevronDown, FiChevronUp, FiEye, FiEyeOff, FiLock, FiPlus, FiRefreshCw, FiTrash2, FiX } from 'react-icons/fi';
 import { api, type BoxFieldDef, type FinalTotalSign } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import IconPicker, { FieldIcon } from '@/components/IconPicker';
@@ -363,12 +363,21 @@ export default function FieldsPage() {
           <h1 className="font-display text-2xl text-blue-950">Fields</h1>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button onClick={addField} className="flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-medium text-blue-800 hover:bg-blue-50">
+          <button
+            onClick={addField}
+            className="flex items-center gap-2 rounded-2xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-medium text-blue-800 shadow-[0_6px_14px_rgba(0,107,196,0.08)] transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50 hover:shadow-[0_9px_18px_rgba(0,107,196,0.12)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/25"
+          >
             <FiPlus /> Add field
           </button>
           {canEdit && (
-            <button onClick={save} disabled={saving} className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/15 hover:bg-blue-700 disabled:opacity-60">
-              <FiCheck /> {saving ? 'Saving...' : 'Save fields'}
+            <button
+              onClick={save}
+              disabled={saving}
+              className="group relative flex items-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-800 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(0,107,196,0.35)] ring-1 ring-inset ring-white/15 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(0,107,196,0.45)] active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/40 disabled:cursor-wait disabled:opacity-60 disabled:hover:translate-y-0"
+            >
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" aria-hidden="true" />
+              {saving ? <FiRefreshCw className="relative z-10 animate-spin" /> : <FiCheck className="relative z-10" />}
+              <span className="relative z-10">{saving ? 'Saving...' : 'Save fields'}</span>
             </button>
           )}
         </div>
@@ -413,8 +422,14 @@ export default function FieldsPage() {
             </button>
           </div>
           {canEdit && (
-            <button onClick={saveFinalTotalSettings} disabled={finalTotalSaving} className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/15 hover:bg-blue-700 disabled:opacity-60">
-              <FiCheck /> {finalTotalSaving ? 'Saving...' : 'Save'}
+            <button
+              onClick={saveFinalTotalSettings}
+              disabled={finalTotalSaving}
+              className="group relative flex items-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-800 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(0,107,196,0.35)] ring-1 ring-inset ring-white/15 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(0,107,196,0.45)] active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/40 disabled:cursor-wait disabled:opacity-60 disabled:hover:translate-y-0"
+            >
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" aria-hidden="true" />
+              {finalTotalSaving ? <FiRefreshCw className="relative z-10 animate-spin" /> : <FiCheck className="relative z-10" />}
+              <span className="relative z-10">{finalTotalSaving ? 'Saving...' : 'Save'}</span>
             </button>
           )}
         </div>

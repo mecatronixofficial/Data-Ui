@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { FiChevronDown, FiChevronUp, FiLock, FiPlus, FiTrash2, FiX } from 'react-icons/fi';
 import { FieldIcon } from './IconPicker';
 import { boxColorHex } from './ColorPicker';
@@ -70,7 +70,7 @@ function usesGroupedCustomEditor(name?: string) {
   ].includes(normalizedName);
 }
 
-export default function TallyBox(props: {
+type TallyBoxProps = {
   idPrefix: string;
   index: number;
   name?: string;
@@ -84,7 +84,9 @@ export default function TallyBox(props: {
   onNameChange?: (name: string) => void;
   onDetailsChange?: (details: BoxDetail[]) => void;
   onChange: (v: number) => void;
-}) {
+};
+
+function TallyBox(props: TallyBoxProps) {
   if (usesGroupedCustomEditor(props.name)) {
     return (
       <GroupedCustomTallyBox
@@ -196,10 +198,10 @@ function LegacyTallyBox({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={locked ? `${title}, view only` : `${title}, click to edit`}
-        className="group relative h-14 w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
+        className="entry-tally-card group relative h-14 w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
       >
         {locked && (
-          <span className="absolute bottom-1.5 right-1.5 text-black"><FiLock size={11} /></span>
+          <span className="entry-lock-status absolute bottom-1.5 right-1.5 text-black"><FiLock size={11} /></span>
         )}
         <span className="flex items-center justify-between gap-1.5">
           {/* The icon always keeps this one default color — it never changes for a
@@ -234,7 +236,7 @@ function LegacyTallyBox({
             <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
               <div>
                 <h3 id={`${idPrefix}-box-${index}-title`} className="font-display text-xl text-blue-950">{title}</h3>
-                <p className="text-xs text-black">
+                <p className={`text-xs text-black ${locked ? 'entry-lock-status' : ''}`}>
                   {locked ? 'View only — someone else on this report enters these values.' : onNameChange ? 'Customize the box name, then enter values below.' : 'Enter values below.'}
                 </p>
               </div>
@@ -652,10 +654,10 @@ function GroupedCustomTallyBox({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={locked ? `${title}, view only` : `${title}, click to edit`}
-        className="group relative h-14 w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
+        className="entry-tally-card group relative h-14 w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
       >
         {locked && (
-          <span className="absolute bottom-1.5 right-1.5 text-black"><FiLock size={11} /></span>
+          <span className="entry-lock-status absolute bottom-1.5 right-1.5 text-black"><FiLock size={11} /></span>
         )}
         <span className="flex items-center justify-between gap-1.5">
           {/* The icon always keeps this one default color — it never changes for a
@@ -702,7 +704,7 @@ function GroupedCustomTallyBox({
             <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
               <div>
                 <h3 id={`${idPrefix}-box-${index}-title`} className="font-display text-xl text-blue-950">{title}</h3>
-                <p className="text-xs text-black">
+                <p className={`text-xs text-black ${locked ? 'entry-lock-status' : ''}`}>
                   {locked
                     ? 'View only — expand a name to see its details.'
                     : 'Add a name, then expand it to enter the configured table values.'}
@@ -1005,10 +1007,10 @@ function FlatCustomTallyBox({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={locked ? `${title}, view only` : `${title}, click to edit`}
-        className="group relative h-14 w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
+        className="entry-tally-card group relative h-14 w-full overflow-hidden rounded-lg border border-blue-100 bg-white p-2 text-left shadow-card transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_14px_30px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
       >
         {locked && (
-          <span className="absolute bottom-1.5 right-1.5 text-black"><FiLock size={11} /></span>
+          <span className="entry-lock-status absolute bottom-1.5 right-1.5 text-black"><FiLock size={11} /></span>
         )}
         <span className="flex items-center justify-between gap-1.5">
           {/* The icon always keeps this one default color — it never changes for a
@@ -1043,7 +1045,7 @@ function FlatCustomTallyBox({
             <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
               <div>
                 <h3 id={`${idPrefix}-box-${index}-title`} className="font-display text-xl text-blue-950">{title}</h3>
-                <p className="text-xs text-black">
+                <p className={`text-xs text-black ${locked ? 'entry-lock-status' : ''}`}>
                   {locked
                     ? 'View only — someone else on this report enters these values.'
                     : 'Add a row for each record, then enter values below.'}
@@ -1207,6 +1209,22 @@ function FlatCustomTallyBox({
     </>
   );
 }
+
+// Parent forms create small callback wrappers while mapping boxes. Ignore those
+// wrapper identities and re-render only when data or presentation actually
+// changes, so typing in one box does not rebuild every other box on the page.
+export default memo(TallyBox, (previous, next) => (
+  previous.idPrefix === next.idPrefix
+  && previous.index === next.index
+  && previous.name === next.name
+  && previous.icon === next.icon
+  && previous.color === next.color
+  && previous.value === next.value
+  && previous.details === next.details
+  && previous.boxFields === next.boxFields
+  && previous.currentUserName === next.currentUserName
+  && previous.locked === next.locked
+));
 
 function SignedNumberInput({ value, onChange, label, readOnly }: { value: number; onChange: (value: number) => void; label: string; readOnly?: boolean }) {
   const [text, setText] = useState(value === 0 ? '' : String(value));

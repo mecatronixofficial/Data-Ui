@@ -42,6 +42,21 @@ body {
   to { transform: scaleX(0); }
 }
 
+@keyframes entry-flip-up {
+  from {
+    opacity: 0;
+    transform: translateY(70%) rotateX(-55deg);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(-8%) rotateX(8deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotateX(0);
+  }
+}
+
 .animate-toast-in {
   animation: toast-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -52,9 +67,113 @@ body {
   animation-fill-mode: both;
 }
 
+.entry-flip-up {
+  animation: entry-flip-up 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: center top;
+}
+
+/* Give every entry-page label, value, control, and dialog a stronger weight. */
+.entry-page {
+  font-weight: 600;
+}
+
+.entry-page .font-normal {
+  font-weight: 500;
+}
+
+.entry-page .font-medium {
+  font-weight: 600;
+}
+
+.entry-page .font-semibold {
+  font-weight: 700;
+}
+
+.entry-page .font-bold {
+  font-weight: 800;
+}
+
+.entry-page svg {
+  scale: 1.2;
+  transform-origin: center;
+}
+
+.entry-page .entry-lock-status {
+  display: none;
+}
+
+/* Glossy entry-page surfaces; scoped so the shared report editor stays unchanged. */
+.entry-page .entry-field-card {
+  border-color: rgb(191 219 254 / 0.9);
+  background: linear-gradient(145deg, #ffffff 0%, #f5f9ff 55%, #ecfdf5 100%);
+  box-shadow:
+    0 14px 32px rgb(7 39 71 / 0.10),
+    inset 0 1px 0 rgb(255 255 255 / 0.95);
+}
+
+.entry-page .entry-field-card-header {
+  border-color: rgb(191 219 254 / 0.8);
+  background: linear-gradient(135deg, rgb(239 246 255 / 0.96), rgb(255 255 255 / 0.94) 58%, rgb(236 253 245 / 0.82));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9);
+}
+
+.entry-page .entry-field-card-body {
+  background: linear-gradient(150deg, #ffffff 0%, #f8fbff 62%, #f0fdf9 100%);
+}
+
+.entry-page .entry-field-card-footer {
+  border-color: rgb(191 219 254 / 0.75);
+  background: linear-gradient(90deg, rgb(239 246 255 / 0.92), rgb(255 255 255 / 0.96), rgb(236 253 245 / 0.75));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9);
+}
+
+.entry-page .entry-tally-card {
+  border-color: rgb(147 197 253 / 0.75);
+  border-radius: 0.75rem;
+  background: linear-gradient(145deg, #ffffff 0%, #eff6ff 72%, #ecfeff 100%);
+  box-shadow:
+    0 7px 16px rgb(0 107 196 / 0.10),
+    inset 0 1px 0 rgb(255 255 255 / 0.95);
+}
+
+.entry-page .entry-tally-card::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 46%;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(to bottom, rgb(255 255 255 / 0.72), transparent);
+}
+
+.entry-page .entry-tally-card:hover {
+  border-color: rgb(59 130 246 / 0.8);
+  background: linear-gradient(145deg, #ffffff 0%, #dbeafe 72%, #cffafe 100%);
+  box-shadow:
+    0 13px 24px rgb(0 107 196 / 0.18),
+    inset 0 1px 0 rgb(255 255 255 / 0.95);
+}
+
+.entry-page .entry-final-total {
+  border-color: rgb(147 197 253 / 0.85);
+  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 48%, #ecfdf5 100%);
+  box-shadow:
+    0 15px 34px rgb(0 107 196 / 0.14),
+    inset 0 1px 0 rgb(255 255 255 / 0.96);
+}
+
+.entry-page .entry-final-total::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 50%;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(to bottom, rgb(255 255 255 / 0.45), transparent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-toast-in,
-  .animate-toast-progress {
+  .animate-toast-progress,
+  .entry-flip-up {
     animation: none;
   }
 }

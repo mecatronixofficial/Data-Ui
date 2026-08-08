@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { FiAlertCircle, FiCalendar, FiCheck, FiClock, FiRefreshCw, FiUser, FiX } from 'react-icons/fi';
+import { FiAlertCircle, FiCheck, FiRefreshCw, FiUser, FiX } from 'react-icons/fi';
 import { type BoxDetail } from '@/components/TallyBox';
 import { type Operator } from '@/components/OperatorToggle';
 import DynamicFieldsForm, { FinalTotalCard, type FieldValue } from '@/components/DynamicFieldsForm';
@@ -32,6 +32,53 @@ function todayInputValue() {
 function dateInputValue(value: unknown) {
   const match = typeof value === 'string' ? value.match(/^\d{4}-\d{2}-\d{2}/) : null;
   return match?.[0] || todayInputValue();
+}
+
+function savedEntryTimestamp(entry: any) {
+  const value = entry?.updatedAt || entry?.createdAt;
+  if (typeof value !== 'string' && typeof value !== 'number') return '';
+  const timestamp = new Date(value);
+  return Number.isNaN(timestamp.getTime()) ? '' : timestamp.toISOString();
+}
+
+function FlipClockPanel({ value, label, wide = false }: { value: string; label: string; wide?: boolean }) {
+  return (
+    <span className="flex flex-col items-center">
+      <span className={`relative flex h-10 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-b from-blue-700 via-blue-800 to-blue-950 shadow-[0_6px_14px_rgba(7,39,71,0.35)] ring-1 ring-inset ring-white/10 sm:h-12 ${wide ? 'min-w-[2.4rem] sm:min-w-[2.6rem]' : 'min-w-[1.95rem] sm:min-w-[2.15rem]'}`}>
+        <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent" aria-hidden="true" />
+        <span className="pointer-events-none absolute inset-x-0 top-1/2 h-px bg-black/25" />
+        <span key={value} className="entry-flip-up relative font-mono text-lg font-bold leading-none tracking-wide text-white sm:text-xl">
+          {value}
+        </span>
+      </span>
+      <span className="text-[5px] mt-[3px] font-semibold uppercase tracking-[0.12em] text-blue-700">{label}</span>
+    </span>
+  );
+}
+
+// Keep the one-second clock state below this component boundary. Previously the
+// whole entry form re-rendered every second, which was especially expensive when
+// fields contained large detail tables.
+function CurrentFlipClock() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const hour = String(now.getHours() % 12 || 12).padStart(2, '0');
+  const minute = String(now.getMinutes()).padStart(2, '0');
+  const period = now.getHours() >= 12 ? 'PM' : 'AM';
+
+  return (
+    <div className="flex h-auto items-center gap-1 rounded-lg" aria-label={`Current time ${hour}:${minute} ${period}`}>
+      <FlipClockPanel value={hour} label="Hour" />
+      <span className="-mt-1 font-mono text-sm font-bold text-blue-800" aria-hidden="true">:</span>
+      <FlipClockPanel value={minute} label="Minute" />
+      <FlipClockPanel value={period} label="Period" wide />
+    </div>
+  );
 }
 
 function normalizeOperator(value: unknown): Operator {
@@ -126,12 +173,7 @@ export default function NewEntryPage() {
   const [name, setName] = useState('');
   const [defaultName, setDefaultName] = useState('');
   const [date, setDate] = useState(todayInputValue);
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState('');
 
   const [fieldConfigs, setFieldConfigs] = useState<FieldConfig[]>([]);
   const [fields, setFields] = useState<FieldValue[]>([]);
@@ -149,23 +191,29 @@ export default function NewEntryPage() {
   const [dirty, setDirty] = useState(false);
   const [syncVersion, setSyncVersion] = useState(0);
   const lastRemoteVersion = useRef('');
+  const changedBoxes = useRef<Map<string, Set<number>>>(new Map());
+  const dateChanged = useRef(false);
+
+  function clearLocalChanges() {
+    changedBoxes.current.clear();
+    dateChanged.current = false;
+  }
+
+  function markBoxChanged(fieldName: string, boxIndex: number) {
+    const indexes = changedBoxes.current.get(fieldName) || new Set<number>();
+    indexes.add(boxIndex);
+    changedBoxes.current.set(fieldName, indexes);
+  }
 
   useEffect(() => {
     if (editingId) return;
     setLoadingEntry(true);
     setLoadError('');
-    const activeEntryRequest = api.getActiveEntry().catch(async (err: any) => {
-      if (err?.status === 401) throw err;
-      // Compatibility with an older backend that does not yet expose /entries/active.
-      if (err?.status === 404) {
-        const entries = await api.myEntries();
-        return entries[0] || null;
-      }
-      throw err;
-    });
-
-    Promise.all([api.me(), api.getFields(), activeEntryRequest])
-      .then(([user, myFields, activeEntry]) => {
+    api.getEntryWorkspace()
+      .then((workspace) => {
+        const user = workspace?.viewer || {};
+        const myFields = workspace?.fields;
+        const activeEntry = workspace?.activeEntry;
         if (user.role === 'superadmin') {
           router.replace('/dashboard');
           return;
@@ -187,13 +235,25 @@ export default function NewEntryPage() {
         if (existing) {
           setMyEntryId(typeof existing._id === 'string' ? existing._id : null);
           setName(typeof existing.name === 'string' && existing.name.trim() ? existing.name : teamReportName);
-          setDate(dateInputValue(existing.date));
+          const today = todayInputValue();
+          setDate(today);
+          dateChanged.current = dateInputValue(existing.date) !== today;
           setFields(fieldsFromSavedEntry(configs, existing));
+          setLastUpdatedAt(savedEntryTimestamp(existing));
           lastRemoteVersion.current = String(existing.updatedAt || existing.__v || '');
         } else {
           setName(teamReportName);
           setFields(configs.map(blankField));
+          setLastUpdatedAt('');
+          dateChanged.current = false;
         }
+        const totalSettings = workspace?.finalTotalSettings;
+        if (totalSettings) {
+          setFinalTotalLabel(totalSettings.label);
+          setFinalTotalIcon(totalSettings.icon);
+          setFinalTotalSign(totalSettings.sign);
+        }
+        changedBoxes.current.clear();
         setDirty(false);
       })
       .catch((err: any) => {
@@ -210,23 +270,19 @@ export default function NewEntryPage() {
     if (!editingId) return;
     setLoadingEntry(true);
     setLoadError('');
-    api.me()
-      .then(async (user) => {
+    Promise.all([
+      api.getEntry(editingId),
+      api.getEntryWorkspace(),
+    ])
+      .then(([entry, workspace]) => {
+        const user = workspace?.viewer || {};
         if (user.role !== 'superadmin' && user.role !== 'admin' && user.role !== 'user') {
           router.replace('/dashboard');
-          return null;
+          return;
         }
         setDefaultName(user.name);
         setRole(user.role || '');
-        const [entry, configuredFields] = await Promise.all([
-          api.getEntry(editingId),
-          api.getFields(),
-        ]);
-        return { user, entry, configuredFields };
-      })
-      .then((result) => {
-        if (!result) return;
-        const { user, entry, configuredFields } = result;
+        const configuredFields = workspace?.fields;
         if (!Array.isArray(entry.fields)) {
           throw new Error('This saved entry has invalid field data.');
         }
@@ -241,7 +297,16 @@ export default function NewEntryPage() {
         setFieldConfigs(configs);
         setFields(fieldsFromSavedEntry(configs, entry));
         setMyEntryId(typeof entry._id === 'string' ? entry._id : editingId);
+        setLastUpdatedAt(savedEntryTimestamp(entry));
         lastRemoteVersion.current = String(entry.updatedAt || entry.__v || '');
+        const totalSettings = workspace?.finalTotalSettings;
+        if (totalSettings) {
+          setFinalTotalLabel(totalSettings.label);
+          setFinalTotalIcon(totalSettings.icon);
+          setFinalTotalSign(totalSettings.sign);
+        }
+        changedBoxes.current.clear();
+        dateChanged.current = false;
         setDirty(false);
       })
       .catch((err: any) => setLoadError(err.message || 'Could not load entry'))
@@ -253,15 +318,18 @@ export default function NewEntryPage() {
   useEffect(() => {
     if (!sharedEntryId || loadingEntry || dirty || saving) return;
     const refresh = async () => {
+      if (document.visibilityState !== 'visible') return;
       try {
-        const entry = await api.getEntry(sharedEntryId);
-        const remoteVersion = String(entry.updatedAt || entry.__v || '');
+        const version = await api.getEntryVersion(sharedEntryId);
+        const remoteVersion = String(version?.updatedAt || version?.__v || '');
         if (remoteVersion && remoteVersion === lastRemoteVersion.current) return;
+        const entry = await api.getEntry(sharedEntryId);
         setName((currentName) =>
           typeof entry.name === 'string' ? entry.name : currentName,
         );
-        setDate(dateInputValue(entry.date));
+        if (editingId) setDate(dateInputValue(entry.date));
         setFields(fieldsFromSavedEntry(fieldConfigs, entry));
+        setLastUpdatedAt(savedEntryTimestamp(entry));
         lastRemoteVersion.current = remoteVersion;
         setSyncVersion((version) => version + 1);
       } catch {
@@ -271,22 +339,13 @@ export default function NewEntryPage() {
     };
     const timer = window.setInterval(refresh, 5000);
     return () => window.clearInterval(timer);
-  }, [sharedEntryId, loadingEntry, dirty, saving, fieldConfigs]);
-
-  useEffect(() => {
-    api.getFinalTotalSettings()
-      .then((settings) => {
-        setFinalTotalLabel(settings.label);
-        setFinalTotalIcon(settings.icon);
-        setFinalTotalSign(settings.sign);
-      })
-      .catch(() => { });
-  }, []);
+  }, [sharedEntryId, loadingEntry, dirty, saving, fieldConfigs, editingId]);
 
   function updateBox(fieldIndex: number, boxIndex: number, value: number) {
     setDirty(true);
     setFields((prev) => {
       if (!prev[fieldIndex] || boxIndex < 0 || boxIndex >= prev[fieldIndex].boxes.length) return prev;
+      markBoxChanged(prev[fieldIndex].name, boxIndex);
       const next = [...prev];
       const boxes = [...next[fieldIndex].boxes];
       boxes[boxIndex] = value;
@@ -299,6 +358,7 @@ export default function NewEntryPage() {
     setDirty(true);
     setFields((prev) => {
       if (!prev[fieldIndex] || boxIndex < 0 || boxIndex >= prev[fieldIndex].details.length) return prev;
+      markBoxChanged(prev[fieldIndex].name, boxIndex);
       const next = [...prev];
       const fieldDetails = [...next[fieldIndex].details];
       fieldDetails[boxIndex] = details;
@@ -309,12 +369,18 @@ export default function NewEntryPage() {
 
   function resetFieldValues() {
     setDirty(true);
+    fieldConfigs.forEach((field) => {
+      field.boxNames.forEach((_, boxIndex) => markBoxChanged(field.name, boxIndex));
+    });
     setFields(fieldConfigs.map(blankField));
   }
 
   function resetSingleField(fieldIndex: number) {
     if (!fieldConfigs[fieldIndex]) return;
     setDirty(true);
+    fieldConfigs[fieldIndex].boxNames.forEach((_, boxIndex) => {
+      markBoxChanged(fieldConfigs[fieldIndex].name, boxIndex);
+    });
     setFields((prev) => {
       if (!prev[fieldIndex]) return prev;
       const next = [...prev];
@@ -347,7 +413,11 @@ export default function NewEntryPage() {
     }
     setSaving(true);
     try {
-      const payload = {
+      const changedFields = Array.from(changedBoxes.current.entries()).map(([fieldName, boxIndexes]) => ({
+        name: fieldName,
+        boxIndexes: Array.from(boxIndexes).sort((a, b) => a - b),
+      }));
+      const payload: any = {
         name: normalizedName,
         date,
         fields: fields.map((field) => ({
@@ -356,15 +426,21 @@ export default function NewEntryPage() {
           details: field.details,
           operator: field.operator,
         })),
-        fieldOperators: fields.length > 1 ? Array(fields.length - 1).fill('+') : [],
+        // Include the local change set even on a first-save request. If another
+        // device created the team report after this page loaded, the backend can
+        // merge these boxes instead of treating this stale page as a full replace.
+        changedFields,
+        dateChanged: dateChanged.current,
       };
       let savedEntry: any;
       if (editingId) {
         savedEntry = await api.updateEntry(editingId, payload);
+        setLastUpdatedAt(savedEntryTimestamp(savedEntry) || new Date().toISOString());
         lastRemoteVersion.current = String(savedEntry?.updatedAt || savedEntry?.__v || '');
         if (Array.isArray(savedEntry?.fields)) {
           setFields(fieldsFromSavedEntry(fieldConfigs, savedEntry));
         }
+        clearLocalChanges();
         setDirty(false);
         router.push(role === 'admin' ? '/dashboard/reports/team' : role === 'superadmin' ? '/dashboard/reports' : '/dashboard');
         return;
@@ -384,6 +460,7 @@ export default function NewEntryPage() {
         }
         setMyEntryId(savedEntry._id);
       }
+      setLastUpdatedAt(savedEntryTimestamp(savedEntry) || new Date().toISOString());
       lastRemoteVersion.current = String(savedEntry?.updatedAt || savedEntry?.__v || '');
       if (typeof savedEntry?.name === 'string' && savedEntry.name.trim()) {
         setName(savedEntry.name);
@@ -391,6 +468,7 @@ export default function NewEntryPage() {
       if (Array.isArray(savedEntry?.fields)) {
         setFields(fieldsFromSavedEntry(fieldConfigs, savedEntry));
       }
+      clearLocalChanges();
       setDirty(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch {
@@ -402,7 +480,7 @@ export default function NewEntryPage() {
 
   if (loadingEntry) {
     return (
-      <div className="flex min-h-[65vh] items-center justify-center">
+      <div className="entry-page flex min-h-[65vh] items-center justify-center">
         <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-white px-12 py-10 text-center shadow-[0_24px_70px_rgba(7,39,71,0.12)]">
           <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-blue-200/40 blur-3xl" />
           <div className="relative mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-950 shadow-[0_12px_30px_rgba(7,39,71,0.25)]">
@@ -417,7 +495,7 @@ export default function NewEntryPage() {
 
   if (loadError) {
     return (
-      <div className="flex min-h-[65vh] items-center justify-center">
+      <div className="entry-page flex min-h-[65vh] items-center justify-center">
         <section role="alert" className="w-full max-w-lg rounded-3xl border border-red-200 bg-white p-8 text-center shadow-[0_24px_70px_rgba(127,29,29,0.12)]">
           <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100 text-red-600">
             <FiAlertCircle size={24} />
@@ -445,17 +523,44 @@ export default function NewEntryPage() {
     );
   }
 
+  const selectedDate = date ? new Date(`${date}T00:00:00`) : null;
+  const lastUpdatedDateTime = lastUpdatedAt ? new Date(lastUpdatedAt) : null;
+
   return (
-    <div className="space-y-3 pb-4">
-      <header className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-2 shadow-[0_8px_28px_rgba(7,39,71,0.07)]">
+    <div className="entry-page space-y-3 pb-4">
+      <header className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-1.5 shadow-[0_8px_28px_rgba(7,39,71,0.07)] sm:p-2">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-blue-300 to-transparent" />
-        <div className="grid gap-2 lg:grid-cols-[minmax(16rem,1fr)_auto_auto] lg:items-stretch">
-          <label className="group relative flex min-w-0 items-center gap-2.5 rounded-xl border border-blue-100 bg-blue-50/35 px-3 py-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[8rem_minmax(0,1fr)] md:grid-cols-[auto_minmax(14rem,1fr)_auto] md:items-stretch lg:grid-cols-[auto_minmax(14rem,1fr)_auto_auto]">
+          <div className="relative order-2 flex h-16 w-full min-w-0 flex-col justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-2.5 py-1.5 text-white shadow-[0_10px_22px_rgba(5,150,105,0.30)] ring-1 ring-inset ring-white/15 sm:order-none sm:w-32 sm:min-w-[8rem]">
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" aria-hidden="true" />
+            <span className="relative flex items-center gap-1.5 whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.08em] text-emerald-50/90">
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/20">
+                <FiRefreshCw size={8} aria-hidden="true" />
+              </span>
+              Last updated
+            </span>
+            <span className="relative pl-[1.375rem]">
+              {lastUpdatedDateTime ? (
+                <span className="mt-0.5 block whitespace-nowrap font-mono font-semibold leading-tight">
+                  <span className="block text-xs text-white">
+                    {lastUpdatedDateTime.toLocaleDateString([], { day: '2-digit', month: 'short', year: '2-digit' })}
+                  </span>
+                  <span className="mt-0.5 inline-flex rounded bg-white px-1.5 py-0.5 text-[10px] leading-none text-emerald-700 shadow-sm">
+                    {lastUpdatedDateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </span>
+              ) : (
+                <span className="block whitespace-nowrap font-mono text-[9px] font-semibold leading-tight text-emerald-50/90">Not saved yet</span>
+              )}
+            </span>
+          </div>
+
+          <label className="group relative order-1 flex min-h-[4rem] min-w-0 items-center gap-2.5 rounded-xl border border-blue-100 bg-blue-50/35 px-3 py-2 sm:order-none">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-950">
               <FiUser size={15} aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[7px] font-semibold uppercase tracking-[0.17em] text-black">Team report</span>
+              <span className="block text-[9px] font-semibold uppercase tracking-[0.16em] text-black">Team report</span>
               <input
                 value={name}
                 readOnly
@@ -465,26 +570,23 @@ export default function NewEntryPage() {
             </span>
           </label>
 
-          <div className="relative inline-flex items-stretch rounded-xl border border-blue-100 bg-white p-1">
-            <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-blue-950">
-              <FiClock size={14} className="text-blue-900" aria-hidden="true" />
-              <span>
-                <span className="block text-[6px] font-semibold uppercase tracking-[0.16em] text-black">Time</span>
-                <span className="block font-mono text-xs font-semibold leading-tight">
-                  {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+          <div className="order-3 flex h-14 w-full items-center justify-between gap-1.5 self-stretch sm:col-span-2 sm:h-16 sm:justify-end md:order-none md:col-span-1 md:justify-start">
+            <CurrentFlipClock />
+            <label className="group relative flex h-12 w-12 min-w-[3.5rem] cursor-pointer flex-col overflow-hidden rounded-lg bg-gradient-to-br from-red-500 via-red-600 to-rose-700 text-white shadow-[0_10px_22px_rgba(220,38,38,0.30)] ring-1 ring-inset ring-white/15 transition hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(220,38,38,0.40)] focus-within:ring-4 focus-within:ring-red-300/30 sm:h-14 sm:w-14 sm:min-w-[4rem]">
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" aria-hidden="true" />
+              <span className="pointer-events-none absolute left-3 top-0 z-10 h-2 w-1 -translate-y-1/2 rounded-full bg-white/70 shadow-sm" />
+              <span className="pointer-events-none absolute right-3 top-0 z-10 h-2 w-1 -translate-y-1/2 rounded-full bg-white/70 shadow-sm" />
+              <span className="relative block bg-black/15 px-2 py-0.5 text-center text-[8px] font-bold uppercase tracking-[0.18em] text-white">
+                {selectedDate ? selectedDate.toLocaleDateString([], { month: 'short' }) : 'Date'}
               </span>
-            </div>
-            <label className="group relative ml-1 flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 transition hover:bg-blue-50">
-              <FiCalendar size={14} className="text-blue-900" aria-hidden="true" />
-              <span className="min-w-[7rem]">
-                <span className="block text-[6px] font-semibold uppercase tracking-[0.16em] text-black">Date</span>
-                <span className="block font-mono text-[11px] font-semibold leading-tight text-blue-950">
-                  {date ? new Date(`${date}T00:00:00`).toLocaleDateString([], {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                  }) : 'Select date'}
+              <span key={date} className="entry-flip-up relative flex flex-1 flex-col items-center justify-center px-2 py-0.5">
+                <span className="font-display text-xl font-bold leading-none text-white">
+                  {selectedDate ? selectedDate.toLocaleDateString([], { day: '2-digit' }) : '--'}
+                </span>
+                <span className="mt-0.5 flex items-center gap-0.5 text-[6px] font-semibold uppercase leading-none text-red-50/90">
+                  <span>{selectedDate ? selectedDate.toLocaleDateString([], { weekday: 'short' }) : 'Select'}</span>
+                  <span aria-hidden="true">{'\u00B7'}</span>
+                  <span>{selectedDate ? selectedDate.getFullYear() : 'date'}</span>
                 </span>
               </span>
               <input
@@ -492,6 +594,7 @@ export default function NewEntryPage() {
                 value={date}
                 onChange={(event) => {
                   setDate(event.target.value);
+                  dateChanged.current = true;
                   setDirty(true);
                 }}
                 aria-label="Entry date"
@@ -500,48 +603,35 @@ export default function NewEntryPage() {
             </label>
           </div>
 
-          <div className="relative flex items-stretch">
-            <span className="flex min-w-[4.25rem] flex-col items-center justify-center rounded-xl border border-blue-100 bg-blue-50/50 px-3">
-              <span className="font-mono text-base font-semibold leading-none text-blue-800">{fields.length}</span>
-              <span className="mt-1 text-[7px] font-semibold uppercase tracking-[0.15em] text-black">
-                {fields.length === 1 ? 'Field' : 'Fields'}
-              </span>
-            </span>
-          </div>
+          {fields.length > 0 && (
+            <div className="order-4 flex w-full flex-wrap items-center justify-end gap-2 sm:col-span-2 md:order-none md:col-span-3 lg:col-span-1 lg:self-center">
+              {role === 'superadmin' && (
+                <button
+                  type="button"
+                  onClick={resetFieldValues}
+                  className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-800 transition hover:border-amber-300 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/30"
+                >
+                  <FiRefreshCw size={14} /> Reset fields
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                aria-label={isEditing || myEntryId ? (saving ? 'Updating' : 'Update') : (saving ? 'Saving' : 'Save')}
+                title={isEditing || myEntryId ? 'Update' : 'Save'}
+                className="group relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-800 text-white shadow-[0_10px_22px_rgba(0,107,196,0.35)] ring-1 ring-inset ring-white/15 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(0,107,196,0.45)] active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/40 disabled:cursor-wait disabled:opacity-60 disabled:hover:translate-y-0"
+              >
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" aria-hidden="true" />
+                <span className="pointer-events-none absolute -inset-1 rounded-2xl bg-white/0 transition group-hover:bg-white/5" aria-hidden="true" />
+                {saving
+                  ? <FiRefreshCw className="relative z-10 animate-spin" size={18} />
+                  : <FiCheck className="relative z-10 transition-transform duration-200 group-hover:scale-110" size={20} />}
+              </button>
+            </div>
+          )}
         </div>
       </header>
-
-      {fields.length > 0 && <div className="flex flex-wrap justify-end gap-2">
-        {role === 'superadmin' && (
-          <button
-            type="button"
-            onClick={resetFieldValues}
-            className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-800 transition hover:border-amber-300 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/30"
-          >
-            <FiRefreshCw size={14} /> Reset fields
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={handleCancel}
-          className="flex items-center gap-1.5 rounded-xl border border-blue-100 bg-white px-3.5 py-2 text-xs font-semibold text-blue-950 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/20"
-        >
-          <FiX size={14} /> Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="flex min-w-[7.25rem] items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-[0_6px_16px_rgba(0,107,196,0.22)] transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_9px_20px_rgba(0,107,196,0.28)] disabled:cursor-wait disabled:opacity-60"
-        >
-          {saving ? <FiRefreshCw className="animate-spin" size={14} /> : <FiCheck size={14} />}
-          {isEditing || myEntryId
-            ? (saving ? 'Updating...' : 'Update')
-            : (saving ? 'Saving...' : 'Save')}
-        </button>
-      </div>}
-
-
       {fields.length === 0 ? (
         <section className="rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-white p-8 text-center shadow-[0_12px_35px_rgba(120,53,15,0.08)]">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
@@ -573,12 +663,14 @@ export default function NewEntryPage() {
               onResetField={resetSingleField}
             />
           </section>
-          <FinalTotalCard
-            fields={fields}
-            label={finalTotalLabel}
-            icon={finalTotalIcon}
-            sign={finalTotalSign}
-          />
+          {fields.length > 1 && (
+            <FinalTotalCard
+              fields={fields}
+              label={finalTotalLabel}
+              icon={finalTotalIcon}
+              sign={finalTotalSign}
+            />
+          )}
         </div>
       ) : null}
 

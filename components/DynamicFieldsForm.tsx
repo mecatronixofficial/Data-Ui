@@ -77,14 +77,14 @@ export default function DynamicFieldsForm({
           return (
             <section
               key={field.name}
-              className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_8px_28px_rgba(7,39,71,0.06)]"
+              className="entry-field-card relative flex h-full flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_8px_28px_rgba(7,39,71,0.06)]"
             >
               {accentHex ? (
                 <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5" style={{ backgroundColor: accentHex }} />
               ) : (
                 <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-gradient-to-r from-blue-500 via-blue-300 to-transparent" />
               )}
-              <div className="flex flex-col gap-3 border-b border-blue-100 bg-blue-50/25 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="entry-field-card-header flex flex-col gap-3 border-b border-blue-100 bg-blue-50/25 p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 w-full items-center justify-between gap-3">
 
                   <div className="min-w-0">
@@ -100,7 +100,7 @@ export default function DynamicFieldsForm({
                   <div className="min-w-0">
                     <h2 className="inline-flex items-center w-full gap-2 truncate font-display text-base font-semibold text-blue-950">
                       {field.locked && (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-black">
+                        <span className="entry-lock-status inline-flex shrink-0 items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-2 py-1 text-[8px] font-semibold uppercase tracking-wider text-black">
                           <FiLock size={9} /> View only
                         </span>
                       )}
@@ -120,7 +120,7 @@ export default function DynamicFieldsForm({
                 )}
               </div>
 
-              <div className="grid flex-1 grid-cols-2 content-start gap-2 bg-white p-3 sm:grid-cols-3 xl:grid-cols-4">
+              <div className="entry-field-card-body grid flex-1 grid-cols-2 content-start gap-2 bg-white p-3 sm:grid-cols-3 xl:grid-cols-4">
                 {field.boxes.map((val, boxIndex) => (
                   <TallyBox
                     idPrefix={`field-${fieldIndex}`}
@@ -140,7 +140,7 @@ export default function DynamicFieldsForm({
                 ))}
               </div>
 
-              <div className="flex items-center justify-end overflow-x-auto border-t border-blue-100 bg-blue-50/40 px-3 py-2 sm:px-4">
+              <div className="entry-field-card-footer flex items-center justify-end overflow-x-auto border-t border-blue-100 bg-blue-50/40 px-3 py-2 sm:px-4">
                 {field.calcType === 'grouped' ? (
                   <div className="flex shrink-0 items-center gap-2">
                     <TotalPill label="" value={groupA} />
@@ -244,7 +244,7 @@ export function FinalTotalCard({
   const single = fields.length <= 1;
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-3 shadow-[0_8px_28px_rgba(7,39,71,0.07)]">
+    <section className="entry-final-total relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-3 shadow-[0_8px_28px_rgba(7,39,71,0.07)]">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-blue-500 via-blue-300 to-transparent" />
 
       <div className="relative flex flex-col gap-3 xl:grid xl:grid-cols-[13rem_minmax(0,1fr)_auto] xl:items-center">
