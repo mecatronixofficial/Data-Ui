@@ -9,6 +9,7 @@ import IconPicker, { FieldIcon } from '@/components/IconPicker';
 import ColorPicker, { boxColorHex } from '@/components/ColorPicker';
 
 type CalcType = 'grouped' | 'signed';
+type FinalTotalSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 type AccountSummary = { _id: string; name: string; email: string; role: string };
 
@@ -77,6 +78,50 @@ const TEAM_BOX_FIELDS: BoxFieldDef[] = [
 ];
 
 type ConfirmDelete = { index: number; name: string };
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function normalizeField(value: unknown): FieldRow {
+  const field = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  const rawBoxNames = Array.isArray(field.boxNames) ? field.boxNames : [];
+  const boxNames = rawBoxNames.length
+    ? rawBoxNames.map((name, index) => typeof name === 'string' ? name : `Box ${index + 1}`)
+    : ['Box 1'];
+  const rawBoxIcons = Array.isArray(field.boxIcons) ? field.boxIcons : [];
+  const rawBoxColors = Array.isArray(field.boxColors) ? field.boxColors : [];
+  const rawBoxFields = Array.isArray(field.boxFields) ? field.boxFields : [];
+
+  return {
+    _id: typeof field._id === 'string' ? field._id : undefined,
+    name: typeof field.name === 'string' ? field.name : '',
+    icon: typeof field.icon === 'string' ? field.icon : '',
+    color: typeof field.color === 'string' ? field.color : '',
+    boxNames,
+    boxIcons: boxNames.map((_, index) => typeof rawBoxIcons[index] === 'string' ? rawBoxIcons[index] : ''),
+    boxColors: boxNames.map((_, index) => typeof rawBoxColors[index] === 'string' ? rawBoxColors[index] : ''),
+    boxFields: boxNames.map((_, index) => Array.isArray(rawBoxFields[index]) && rawBoxFields[index].length
+      ? rawBoxFields[index] as BoxFieldDef[]
+      : SIMPLE_BOX_FIELDS),
+    calcType: field.calcType === 'grouped' ? 'grouped' : 'signed',
+    groupSplit: typeof field.groupSplit === 'number' ? field.groupSplit : 0,
+    userOnlyEdit: Boolean(field.userOnlyEdit),
+    visibleTo: Array.isArray(field.visibleTo)
+      ? field.visibleTo.filter((id): id is string => typeof id === 'string')
+      : [],
+  };
+}
+
+function isAccountSummary(value: unknown): value is AccountSummary {
+  if (!value || typeof value !== 'object') return false;
+  const account = value as Record<string, unknown>;
+  return typeof account._id === 'string'
+    && typeof account.name === 'string'
+    && typeof account.email === 'string'
+    && (account.role === 'admin' || account.role === 'user');
+}
+
 export default function FieldsPage() {
   const router = useRouter();
   const [rows, setRows] = useState<FieldRow[]>([]);
@@ -94,65 +139,93 @@ export default function FieldsPage() {
   const [finalTotalLabel, setFinalTotalLabelState] = useState('Final Total');
   const [finalTotalIcon, setFinalTotalIconState] = useState('');
   const [finalTotalSign, setFinalTotalSignState] = useState<FinalTotalSign>('add');
-  const [finalTotalSaving, setFinalTotalSaving] = useState(false);
+  const [finalTotalSaveStatus, setFinalTotalSaveStatus] = useState<FinalTotalSaveStatus>('idle');
 
-  function load() {
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
-    Promise.all([api.me(), api.getFields()])
-      .then(([user, fields]) => {
+    Promise.all([
+      api.me(),
+      api.getFields(),
+      api.getFinalTotalSettings().catch((error: unknown) => {
+        if (!cancelled) toast.error(errorMessage(error, 'Could not load Final Total settings'));
+        return { label: 'Final Total', icon: '', sign: 'add' as FinalTotalSign };
+      }),
+      api.listUsers().catch(() => []),
+    ])
+      .then(([user, fields, finalTotalSettings, accounts]) => {
+        if (cancelled) return;
         const hasManage = Boolean(user.permissions?.manageFields);
         if (!hasManage) {
+          setCanEdit(false);
           router.replace('/dashboard');
           return;
         }
+
         setCanEdit(true);
-        const loadedRows = fields.map((f: any) => ({
-            _id: f._id,
-            name: f.name,
-            icon: f.icon || '',
-            color: f.color || '',
-            boxNames: [...f.boxNames],
-            boxIcons: f.boxNames.map((_: string, i: number) => f.boxIcons?.[i] || ''),
-            boxColors: f.boxNames.map((_: string, i: number) => f.boxColors?.[i] || ''),
-            boxFields: f.boxNames.map((_: string, i: number) => f.boxFields?.[i]?.length ? f.boxFields[i] : SIMPLE_BOX_FIELDS),
-            calcType: f.calcType,
-            groupSplit: f.groupSplit,
-            userOnlyEdit: Boolean(f.userOnlyEdit),
-            visibleTo: Array.isArray(f.visibleTo) ? f.visibleTo : [],
-          }));
-        setRows(loadedRows);
-        api.listUsers()
-          .then((accounts: any[]) =>
-            setAllAccounts(
-              Array.isArray(accounts) ? accounts.filter((a) => a.role === 'admin' || a.role === 'user') : [],
-            ),
-          )
-          .catch(() => setAllAccounts([]));
+        setRows(Array.isArray(fields) ? fields.map(normalizeField) : []);
+        setAllAccounts(Array.isArray(accounts) ? accounts.filter(isAccountSummary) : []);
+        setFinalTotalLabelState(finalTotalSettings.label || 'Final Total');
+        setFinalTotalIconState(finalTotalSettings.icon || '');
+        setFinalTotalSignState(finalTotalSettings.sign === 'subtract' ? 'subtract' : 'add');
       })
-      .catch((err: any) => toast.error(err.message || 'Could not load fields'))
-      .finally(() => setLoading(false));
-    api.getFinalTotalSettings()
-      .then((settings) => {
-        setFinalTotalLabelState(settings.label);
-        setFinalTotalIconState(settings.icon);
-        setFinalTotalSignState(settings.sign);
+      .catch((error: unknown) => {
+        if (!cancelled) toast.error(errorMessage(error, 'Could not load field settings'));
       })
-      .catch((err: any) => toast.error(err.message || 'Could not load Final Total settings'));
-  }
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
-  useEffect(load, [router]);
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
-  async function saveFinalTotalSettings() {
-    setFinalTotalSaving(true);
+  useEffect(() => {
+    if (finalTotalSaveStatus !== 'saved') return;
+    const timer = window.setTimeout(() => setFinalTotalSaveStatus('idle'), 2500);
+    return () => window.clearTimeout(timer);
+  }, [finalTotalSaveStatus]);
+
+  useEffect(() => {
+    if (!confirmDelete && !boxEditor && visibilityEditor === null) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      if (confirmDelete) setConfirmDelete(null);
+      else if (boxEditor) setBoxEditor(null);
+      else setVisibilityEditor(null);
+    }
+
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [boxEditor, confirmDelete, visibilityEditor]);
+
+  async function selectFinalTotalSign(sign: FinalTotalSign) {
+    if (!canEdit || finalTotalSaveStatus === 'saving') return;
+
+    const previousSign = finalTotalSign;
+    setFinalTotalSignState(sign);
+    setFinalTotalSaveStatus('saving');
     try {
-      const result = await api.updateFinalTotalSettings({ label: finalTotalLabel.trim() || 'Final Total', icon: finalTotalIcon, sign: finalTotalSign });
+      const result = await api.updateFinalTotalSettings({
+        label: finalTotalLabel.trim() || 'Final Total',
+        icon: finalTotalIcon,
+        sign,
+      });
       setFinalTotalLabelState(result.label);
       setFinalTotalIconState(result.icon);
       setFinalTotalSignState(result.sign);
+      setFinalTotalSaveStatus('saved');
     } catch {
-      // The API client shows the error notification.
-    } finally {
-      setFinalTotalSaving(false);
+      setFinalTotalSignState(previousSign);
+      setFinalTotalSaveStatus('error');
     }
   }
 
@@ -306,9 +379,23 @@ export default function FieldsPage() {
   }
 
   async function save() {
+    if (finalTotalSaveStatus === 'saving') return;
     setSaving(true);
     const saved: FieldRow[] = [...rows];
+    let finalTotalSaved = false;
     try {
+      setFinalTotalSaveStatus('saving');
+      const finalTotalResult = await api.updateFinalTotalSettings({
+        label: finalTotalLabel.trim() || 'Final Total',
+        icon: finalTotalIcon,
+        sign: finalTotalSign,
+      });
+      setFinalTotalLabelState(finalTotalResult.label);
+      setFinalTotalIconState(finalTotalResult.icon);
+      setFinalTotalSignState(finalTotalResult.sign);
+      setFinalTotalSaveStatus('saved');
+      finalTotalSaved = true;
+
       for (let index = 0; index < rows.length; index += 1) {
         const row = rows[index];
         const payload = {
@@ -343,6 +430,7 @@ export default function FieldsPage() {
       }
       setRows(saved);
     } catch {
+      if (!finalTotalSaved) setFinalTotalSaveStatus('error');
       // Persist whichever fields already saved successfully so retrying doesn't recreate them.
       setRows(saved);
       // The API client shows the error notification.
@@ -351,37 +439,77 @@ export default function FieldsPage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-black">Loading fields...</p>;
+  if (loading) {
+    return (
+      <div className="flex min-h-[65vh] items-center justify-center px-4">
+        <div className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-blue-100 bg-white px-8 py-10 text-center shadow-[0_24px_60px_-24px_rgba(0,107,196,0.38)]">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-400 via-blue-600 to-blue-400" />
+          <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-blue-100/70 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -left-16 h-44 w-44 rounded-full bg-cyan-100/60 blur-3xl" />
+
+          <div className="relative mx-auto mb-5 flex h-16 w-16 items-center justify-center">
+            <span className="absolute inset-0 animate-spin rounded-full border-[3px] border-blue-100 border-t-blue-600" />
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-700 to-blue-500 text-white shadow-[0_8px_20px_rgba(0,107,196,0.32)]">
+              <FiRefreshCw className="animate-spin" size={18} aria-hidden="true" />
+            </span>
+          </div>
+
+          <div className="relative" role="status" aria-live="polite">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-blue-600">Admin settings</p>
+            <h1 className="mt-2 font-display text-xl font-extrabold text-blue-950">Loading fields</h1>
+            <p className="mt-2 text-xs font-semibold text-slate-500">Preparing your field configuration...</p>
+          </div>
+
+          <div className="relative mx-auto mt-6 h-1.5 max-w-44 overflow-hidden rounded-full bg-blue-100">
+            <div className="h-full w-full animate-pulse rounded-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const indexedRows = rows.map((row, index) => ({ row, index }));
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-900">Admin settings</p>
-          <h1 className="font-display text-2xl text-blue-950">Fields</h1>
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-950 via-blue-800 to-blue-600 p-6 text-white shadow-[0_24px_60px_rgba(0,107,196,0.30)] sm:p-8">
+        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-blue-300/20 blur-3xl" />
+          <div className="absolute -bottom-28 -left-16 h-64 w-64 rounded-full bg-cyan-300/10 blur-3xl" />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-blue-950/45 to-transparent" />
+          <div className="absolute -left-10 -top-12 h-[220%] w-1/2 rotate-12 bg-gradient-to-br from-white/10 via-white/[0.04] to-transparent" />
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={addField}
-            className="flex items-center gap-2 rounded-2xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-medium text-blue-800 shadow-[0_6px_14px_rgba(0,107,196,0.08)] transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50 hover:shadow-[0_9px_18px_rgba(0,107,196,0.12)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/25"
-          >
-            <FiPlus /> Add field
-          </button>
-          {canEdit && (
-            <button
-              onClick={save}
-              disabled={saving}
-              className="group relative flex items-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-800 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(0,107,196,0.35)] ring-1 ring-inset ring-white/15 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(0,107,196,0.45)] active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/40 disabled:cursor-wait disabled:opacity-60 disabled:hover:translate-y-0"
-            >
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" aria-hidden="true" />
-              {saving ? <FiRefreshCw className="relative z-10 animate-spin" /> : <FiCheck className="relative z-10" />}
-              <span className="relative z-10">{saving ? 'Saving...' : 'Save fields'}</span>
-            </button>
-          )}
+
+        <div className="relative flex flex-wrap items-end justify-between gap-5">
+          <div>
+            <p className="mb-1.5 text-xs font-extrabold uppercase tracking-[0.2em] text-blue-100">Admin settings</p>
+            <h1 className="font-display text-3xl font-extrabold leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.25)] sm:text-4xl">Fields</h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {canEdit && (
+              <>
+                <button
+                  type="button"
+                  onClick={addField}
+                  className="flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white shadow-[0_8px_20px_rgba(0,20,60,0.18),inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/25"
+                >
+                  <FiPlus /> Add field
+                </button>
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={saving || finalTotalSaveStatus === 'saving'}
+                  className="group relative flex items-center gap-2 overflow-hidden rounded-2xl bg-white px-4 py-2.5 text-sm font-extrabold text-blue-800 shadow-[0_10px_24px_rgba(0,20,60,0.28)] transition duration-200 hover:-translate-y-0.5 hover:bg-blue-50 hover:shadow-[0_14px_30px_rgba(0,20,60,0.34)] active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30 disabled:cursor-wait disabled:opacity-60 disabled:hover:translate-y-0"
+                >
+                  {saving ? <FiRefreshCw className="relative z-10 animate-spin" /> : <FiCheck className="relative z-10" />}
+                  <span className="relative z-10">{saving ? 'Saving...' : 'Save changes'}</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      </section>
 
       {!canEdit && (
         <div className="rounded-2xl border border-blue-100 bg-blue-50/60 px-5 py-3 text-xs font-medium text-blue-950">
@@ -389,49 +517,53 @@ export default function FieldsPage() {
         </div>
       )}
 
-      <section className="rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-black">Final Total card</p>
-        <p className="mb-4 text-xs text-black">Change the text, icon and operator used to combine field totals on the entry page and Reports table.</p>
-        <div className="flex flex-wrap items-end gap-3">
+      <section className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-white via-blue-50/35 to-cyan-50/55 p-5 shadow-[0_16px_44px_rgba(0,107,196,0.09)] sm:p-6">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-52 w-52 rounded-full bg-blue-100/60 blur-3xl" aria-hidden="true" />
+        <div className="mb-3 flex min-h-5 items-center justify-between gap-3">
+          <p className="relative text-xs font-extrabold uppercase tracking-[0.16em] text-blue-950">Final Total card</p>
+          <span className="flex items-center gap-1.5 text-xs font-semibold" aria-live="polite" aria-atomic="true">
+            {finalTotalSaveStatus === 'saving' && (
+              <span className="flex items-center gap-1.5 text-blue-700">
+                <FiRefreshCw className="animate-spin" aria-hidden="true" /> Saving...
+              </span>
+            )}
+            {finalTotalSaveStatus === 'saved' && (
+              <span className="flex items-center gap-1.5 text-emerald-700">
+                <FiCheck aria-hidden="true" /> Saved
+              </span>
+            )}
+            {finalTotalSaveStatus === 'error' && <span className="text-red-700">Not saved</span>}
+          </span>
+        </div>
+        <div className="relative flex flex-wrap items-center gap-3">
           <IconPicker value={finalTotalIcon} onChange={setFinalTotalIconState} disabled={!canEdit} />
           <input
             aria-label="Final Total label"
             value={finalTotalLabel}
             readOnly={!canEdit}
             onChange={(event) => setFinalTotalLabelState(event.target.value)}
-            className={`min-w-[200px] flex-1 rounded-lg border border-blue-100 px-3 py-2 text-sm font-semibold text-blue-950 outline-none ${canEdit ? 'bg-blue-50/50 focus:border-blue-400' : 'bg-transparent cursor-default'}`}
+            className={`min-w-[200px] flex-1 rounded-xl border border-blue-100 px-3.5 py-2.5 text-sm font-bold text-blue-950 shadow-sm outline-none transition ${canEdit ? 'bg-white focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10' : 'cursor-default bg-transparent'}`}
           />
           <div className="flex items-center gap-2">
             <button
               type="button"
-              disabled={!canEdit}
-              onClick={() => canEdit && setFinalTotalSignState('add')}
+              disabled={!canEdit || finalTotalSaveStatus === 'saving'}
+              onClick={() => selectFinalTotalSign('add')}
               title="Add the field totals"
-              className={`rounded border px-3 py-1.5 text-xs font-medium transition ${finalTotalSign !== 'subtract' ? 'border-emerald-400 bg-emerald-600 text-white' : 'border-blue-200 bg-white text-blue-800'} ${canEdit ? 'hover:bg-blue-50' : 'cursor-default opacity-80'}`}
+              className={`rounded-xl border px-3.5 py-2 text-xs font-bold shadow-sm transition disabled:cursor-wait disabled:opacity-60 ${finalTotalSign === 'add' ? 'border-emerald-500 bg-emerald-600 text-white hover:bg-emerald-700' : 'border-blue-200 bg-white text-blue-800 hover:bg-blue-50'} ${canEdit ? '' : 'cursor-default opacity-80'}`}
             >
               Add (+)
             </button>
             <button
               type="button"
-              disabled={!canEdit}
-              onClick={() => canEdit && setFinalTotalSignState('subtract')}
+              disabled={!canEdit || finalTotalSaveStatus === 'saving'}
+              onClick={() => selectFinalTotalSign('subtract')}
               title="Subtract each following field total from the first"
-              className={`rounded border px-3 py-1.5 text-xs font-medium transition ${finalTotalSign === 'subtract' ? 'border-red-400 bg-red-600 text-white' : 'border-blue-200 bg-white text-blue-800'} ${canEdit ? 'hover:bg-blue-50' : 'cursor-default opacity-80'}`}
+              className={`rounded-xl border px-3.5 py-2 text-xs font-bold shadow-sm transition disabled:cursor-wait disabled:opacity-60 ${finalTotalSign === 'subtract' ? 'border-red-500 bg-red-600 text-white hover:bg-red-700' : 'border-blue-200 bg-white text-blue-800 hover:bg-blue-50'} ${canEdit ? '' : 'cursor-default opacity-80'}`}
             >
               Subtract (−)
             </button>
           </div>
-          {canEdit && (
-            <button
-              onClick={saveFinalTotalSettings}
-              disabled={finalTotalSaving}
-              className="group relative flex items-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-800 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(0,107,196,0.35)] ring-1 ring-inset ring-white/15 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(0,107,196,0.45)] active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300/40 disabled:cursor-wait disabled:opacity-60 disabled:hover:translate-y-0"
-            >
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" aria-hidden="true" />
-              {finalTotalSaving ? <FiRefreshCw className="relative z-10 animate-spin" /> : <FiCheck className="relative z-10" />}
-              <span className="relative z-10">{finalTotalSaving ? 'Saving...' : 'Save'}</span>
-            </button>
-          )}
         </div>
       </section>
 
@@ -446,11 +578,17 @@ export default function FieldsPage() {
         // recolors the IconPicker/FieldIcon glyph, which always keeps its own fixed color.
         const fieldAccentHex = boxColorHex(row.color);
         return (
-        <section key={row._id || `new-${index}`} className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-[0_14px_40px_rgba(0,107,196,0.08)]">
+        <section key={row._id || `new-${index}`} className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-white via-white to-blue-50/45 p-4 shadow-[0_16px_44px_rgba(7,39,71,0.08)] transition-shadow hover:shadow-[0_20px_52px_rgba(7,39,71,0.11)] sm:p-6">
           {fieldAccentHex && (
             <div className="pointer-events-none absolute inset-x-0 top-0 h-1" style={{ backgroundColor: fieldAccentHex }} />
           )}
-          <div className="mb-5 flex items-center gap-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-blue-700">Field {String(index + 1).padStart(2, '0')}</p>
+            <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700">
+              {row.boxNames.length} {row.boxNames.length === 1 ? 'box' : 'boxes'}
+            </span>
+          </div>
+          <div className="mb-5 flex flex-wrap items-center gap-3">
             <IconPicker value={row.icon} onChange={(icon) => updateRow(index, { icon })} disabled={!canEdit} />
             <ColorPicker value={row.color} onChange={(color) => updateRow(index, { color })} disabled={!canEdit} />
             <input
@@ -458,7 +596,7 @@ export default function FieldsPage() {
               value={row.name}
               readOnly={!canEdit}
               onChange={(event) => updateRow(index, { name: event.target.value })}
-              className={`w-full rounded-lg border border-blue-100 px-3 py-2 text-sm font-semibold text-blue-950 outline-none ${canEdit ? 'bg-blue-50/50 focus:border-blue-400' : 'bg-transparent cursor-default'}`}
+              className={`min-w-[12rem] flex-1 rounded-xl border border-blue-100 px-3.5 py-2.5 text-sm font-bold text-blue-950 outline-none transition ${canEdit ? 'bg-blue-50/40 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10' : 'cursor-default bg-transparent'}`}
             />
             {canEdit && (
               <div className="flex shrink-0 items-center gap-1">
@@ -475,7 +613,7 @@ export default function FieldsPage() {
             )}
           </div>
 
-          <div className="mb-5 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+          <div className="mb-4 grid gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
             {row.boxNames.map((boxName, boxIndex) => (
               <BoxTile
                 key={boxIndex}
@@ -490,20 +628,20 @@ export default function FieldsPage() {
           </div>
 
           {canEdit && (
-            <button type="button" onClick={() => addBox(index)} className="mb-5 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-blue-950 hover:bg-blue-50">
+            <button type="button" onClick={() => addBox(index)} className="mb-5 flex items-center gap-1.5 rounded-xl border border-dashed border-blue-200 bg-white px-3.5 py-2 text-sm font-bold text-blue-800 transition hover:border-blue-400 hover:bg-blue-50">
               <FiPlus /> Add box
             </button>
           )}
 
-          <div className="flex flex-col lg:flex-row items-center lg:justify-between gap-3">
-            <div className="">
+          <div className="flex flex-col items-stretch gap-4 rounded-2xl border border-blue-100 bg-blue-50/35 p-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-black">Calculation (how box values combine into this field's total)</p>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   disabled={!canEdit}
                   onClick={() => canEdit && setCalcType(index, 'grouped')}
-                  className={`rounded border px-3 py-1.5 text-xs font-medium transition ${row.calcType === 'grouped' ? 'border-blue-500 bg-blue-600 text-white' : 'border-blue-200 bg-white text-blue-800'} ${canEdit ? 'hover:bg-blue-50' : 'cursor-default opacity-80'}`}
+                  className={`rounded-xl border px-3 py-2 text-xs font-bold shadow-sm transition ${row.calcType === 'grouped' ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700' : 'border-blue-200 bg-white text-blue-800 hover:bg-blue-50'} ${canEdit ? '' : 'cursor-default opacity-80'}`}
                 >
                   Grouped (split total)
                 </button>
@@ -511,7 +649,7 @@ export default function FieldsPage() {
                   type="button"
                   disabled={!canEdit}
                   onClick={() => canEdit && setCalcType(index, 'signed')}
-                  className={`rounded border px-3 py-1.5 text-xs font-medium transition ${row.calcType === 'signed' ? 'border-blue-500 bg-blue-600 text-white' : 'border-blue-200 bg-white text-blue-800'} ${canEdit ? 'hover:bg-blue-50' : 'cursor-default opacity-80'}`}
+                  className={`rounded-xl border px-3 py-2 text-xs font-bold shadow-sm transition ${row.calcType === 'signed' ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700' : 'border-blue-200 bg-white text-blue-800 hover:bg-blue-50'} ${canEdit ? '' : 'cursor-default opacity-80'}`}
                 >
                   Sum by sign (+ / −)
                 </button>
@@ -545,7 +683,7 @@ export default function FieldsPage() {
                 disabled={!canEdit}
                 onClick={() => canEdit && updateRow(index, { userOnlyEdit: !row.userOnlyEdit })}
                 title="Choose whether the Admin or assigned User enters this field's values"
-                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition disabled:cursor-default disabled:opacity-60 ${
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold shadow-sm transition disabled:cursor-default disabled:opacity-60 ${
                   row.userOnlyEdit ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-blue-200 bg-white text-blue-800 hover:bg-blue-50'
                 }`}
               >
@@ -561,7 +699,7 @@ export default function FieldsPage() {
                 disabled={!canEdit}
                 onClick={() => canEdit && setVisibilityEditor(index)}
                 title="Choose which users or admins can see this field"
-                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition disabled:cursor-default disabled:opacity-60 ${
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold shadow-sm transition disabled:cursor-default disabled:opacity-60 ${
                   row.visibleTo.length > 0 ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-blue-200 bg-white text-blue-800 hover:bg-blue-50'
                 }`}
               >
@@ -575,12 +713,13 @@ export default function FieldsPage() {
       })}
 
       {canEdit && confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="fields-confirm-title">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/55 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="fields-confirm-title">
+          <div className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-white/70 bg-white p-6 text-center shadow-[0_30px_80px_rgba(0,20,60,0.35)]">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-400 via-red-600 to-rose-500" />
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100 text-red-600">
               <FiTrash2 size={25} />
             </div>
-            <h2 id="fields-confirm-title" className="font-display text-2xl text-blue-950">
+            <h2 id="fields-confirm-title" className="font-display text-2xl font-extrabold text-blue-950">
               Remove field?
             </h2>
             <p className="mt-2 text-sm text-black">
@@ -600,7 +739,7 @@ export default function FieldsPage() {
 
       {boxEditor && rows[boxEditor.index] && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/45 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/55 p-3 backdrop-blur-sm sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="box-editor-title"
@@ -608,17 +747,17 @@ export default function FieldsPage() {
             if (event.target === event.currentTarget) closeBoxEditor();
           }}
         >
-          <div className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
+          <div className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-white/20 bg-white shadow-[0_30px_90px_rgba(0,20,60,0.42)]">
+            <div className="flex items-center justify-between bg-gradient-to-r from-blue-950 to-blue-700 px-5 py-4 text-white">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-900">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-200">
                   {rows[boxEditor.index].name || 'Field'}
                 </p>
-                <h2 id="box-editor-title" className="font-display text-xl text-blue-950">
+                <h2 id="box-editor-title" className="font-display text-xl font-extrabold text-white">
                   {rows[boxEditor.index].boxNames[boxEditor.boxIndex] || `Box ${boxEditor.boxIndex + 1}`}
                 </h2>
               </div>
-              <button type="button" onClick={closeBoxEditor} aria-label="Close" className="rounded-lg p-2 text-black hover:bg-blue-50 hover:text-blue-950">
+              <button type="button" onClick={closeBoxEditor} aria-label="Close" className="rounded-xl p-2 text-blue-100 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
                 <FiX size={18} />
               </button>
             </div>
@@ -644,7 +783,7 @@ export default function FieldsPage() {
             </div>
 
             <div className="flex gap-3 border-t border-blue-100 bg-blue-50/60 px-5 py-4">
-              <button type="button" onClick={closeBoxEditor} className="flex-1 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+              <button type="button" onClick={closeBoxEditor} className="flex-1 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:from-blue-800 hover:to-blue-700">
                 Done
               </button>
             </div>
@@ -654,7 +793,7 @@ export default function FieldsPage() {
 
       {canEdit && visibilityEditor !== null && rows[visibilityEditor] && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/45 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/55 p-3 backdrop-blur-sm sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="visibility-editor-title"
@@ -662,15 +801,15 @@ export default function FieldsPage() {
             if (event.target === event.currentTarget) setVisibilityEditor(null);
           }}
         >
-          <div className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
+          <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-white/20 bg-white shadow-[0_30px_90px_rgba(0,20,60,0.42)]">
+            <div className="flex items-center justify-between bg-gradient-to-r from-blue-950 to-blue-700 px-5 py-4 text-white">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-900">Visibility</p>
-                <h2 id="visibility-editor-title" className="font-display text-xl text-blue-950">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-200">Visibility</p>
+                <h2 id="visibility-editor-title" className="font-display text-xl font-extrabold text-white">
                   {rows[visibilityEditor].name || 'Field'}
                 </h2>
               </div>
-              <button type="button" onClick={() => setVisibilityEditor(null)} aria-label="Close" className="rounded-lg p-2 text-black hover:bg-blue-50 hover:text-blue-950">
+              <button type="button" onClick={() => setVisibilityEditor(null)} aria-label="Close" className="rounded-xl p-2 text-blue-100 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
                 <FiX size={18} />
               </button>
             </div>
@@ -742,7 +881,7 @@ export default function FieldsPage() {
             </div>
 
             <div className="flex gap-3 border-t border-blue-100 bg-blue-50/60 px-5 py-4">
-              <button type="button" onClick={() => setVisibilityEditor(null)} className="flex-1 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+              <button type="button" onClick={() => setVisibilityEditor(null)} className="flex-1 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:from-blue-800 hover:to-blue-700">
                 Done
               </button>
             </div>
@@ -774,16 +913,16 @@ function BoxTile({
       type="button"
       onClick={onClick}
       aria-label={`${name || `Box ${boxIndex + 1}`}, click to edit`}
-      className="group flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/30 p-2 text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_10px_24px_rgba(0,107,196,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
+      className="group flex items-center gap-3 rounded-2xl border border-blue-100 bg-gradient-to-br from-white to-blue-50/75 p-3 text-left shadow-[0_5px_14px_rgba(7,39,71,0.05)] transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_12px_26px_rgba(0,107,196,0.12)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/15"
     >
       {/* The icon badge always keeps its default blue color — box color (hex) is used
           for the little dot below only, never to tint the icon itself. */}
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-950">
-        <FieldIcon icon={icon} size={15} />
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] transition-transform group-hover:scale-105">
+        <FieldIcon icon={icon} size={17} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-xs font-semibold text-blue-950">{name || `Box ${boxIndex + 1}`}</span>
-        <span className="block text-[10px] font-medium uppercase tracking-wider text-black">
+        <span className="block truncate text-xs font-extrabold text-blue-950">{name || `Box ${boxIndex + 1}`}</span>
+        <span className="mt-0.5 block text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500">
           {columnCount} column{columnCount === 1 ? '' : 's'}
         </span>
       </span>

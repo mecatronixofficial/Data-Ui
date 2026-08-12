@@ -1,72 +1,105 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import {
-  FiPlusSquare,
   FiBarChart2,
-  FiChevronRight,
-  FiLogOut,
+  FiChevronDown,
   FiHome,
+  FiLogOut,
+  FiMenu,
+  FiPlusSquare,
+  FiSettings,
   FiShield,
   FiTag,
-  FiMenu,
-  FiSettings,
+  FiUser,
   FiUserPlus,
   FiUsers,
   FiX,
 } from 'react-icons/fi';
+import type { IconType } from 'react-icons';
 import { api } from '@/lib/api';
 
-export default function Sidebar({
-  role,
-  name,
-  permissions,
-}: {
+type SidebarProps = {
   role: string;
   name: string;
   permissions: Record<string, boolean>;
-}) {
+};
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: IconType;
+  matches?: (pathname: string) => boolean;
+};
+
+const LOGO_PATH = '/logo/B-one Production (1).png';
+
+export default function Sidebar({ role, name, permissions }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [createMenuOpen, setCreateMenuOpen] = useState(false);
-  const [reportsMenuOpen, setReportsMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [accountsOpen, setAccountsOpen] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
-  const showReportsMenu = role === 'superadmin' || role === 'admin';
-
-  const links = [
-    { href: '/dashboard', label: 'Dashboard', icon: FiHome, show: true },
-    { href: '/dashboard/entry/new', label: name || 'New Entry', icon: FiPlusSquare, show: role === 'admin' || role === 'user' },
-    { href: '/dashboard/fields', label: 'Fields', icon: FiTag, show: permissions?.manageFields || role === 'superadmin' },
-  ].filter((link) => link.show);
-  const settingsLink = { href: '/dashboard/settings', label: 'Settings', icon: FiSettings };
+  const showAccounts = role === 'superadmin';
+  const showReports = role === 'superadmin' || role === 'admin';
   const showSettings = role === 'superadmin';
 
-  const createAccountLinks = [
-    { href: '/dashboard/admins', label: 'Admin', icon: FiShield },
-    { href: '/dashboard/users', label: 'User', icon: FiUsers },
+  const workspaceLinks: NavItem[] = [
+    { href: '/dashboard', label: 'Dashboard', icon: FiHome },
+    ...(role === 'admin' || role === 'user'
+      ? [{
+          href: '/dashboard/entry/new',
+          label: 'New entry',
+          icon: FiPlusSquare,
+          matches: (path: string) => path.startsWith('/dashboard/entry/'),
+        }]
+      : []),
+    ...(role === 'user'
+      ? [{ href: '/dashboard/details', label: 'My details', icon: FiUser }]
+      : []),
+    ...(permissions?.manageFields || role === 'superadmin'
+      ? [{ href: '/dashboard/fields', label: 'Fields', icon: FiTag }]
+      : []),
   ];
-  const showCreateAccount = role === 'superadmin';
-  const createAccountActive = createAccountLinks.some((l) => pathname === l.href);
 
-  const reportsLinks = role === 'superadmin'
-    ? [
-        { href: '/dashboard/reports', label: 'Team Reports', icon: FiBarChart2 },
-      ]
-    : [
-        { href: '/dashboard/reports/team', label: 'Team Report', icon: FiUsers },
-      ];
+  const accountLinks: NavItem[] = [
+    { href: '/dashboard/admins', label: 'Admins', icon: FiShield },
+    { href: '/dashboard/users', label: 'Users', icon: FiUsers },
+  ];
+
+  const reportLinks: NavItem[] = role === 'superadmin'
+    ? [{ href: '/dashboard/reports', label: 'Team reports', icon: FiBarChart2 }]
+    : [{ href: '/dashboard/reports/team', label: 'Team report', icon: FiUsers }];
+
+  const accountsActive = accountLinks.some((item) => pathname === item.href);
   const reportsActive = pathname === '/dashboard/reports' || pathname.startsWith('/dashboard/reports/');
 
   useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+    setMobileOpen(false);
+    if (accountsActive) setAccountsOpen(true);
+    if (reportsActive) setReportsOpen(true);
+  }, [accountsActive, pathname, reportsActive]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setMobileOpen(false);
+    }
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [mobileOpen]);
 
   async function handleLogout() {
-    setOpen(false);
+    if (signingOut) return;
+    setSigningOut(true);
+    setMobileOpen(false);
     try {
       await api.logout();
     } finally {
@@ -74,285 +107,285 @@ export default function Sidebar({
     }
   }
 
+  const initial = name.trim().charAt(0).toUpperCase() || 'U';
+  const roleLabel = role === 'superadmin' ? 'Super admin' : role;
+
   return (
     <>
-      {/* ── Mobile top bar ── */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-blue-950 px-4 py-3 text-white lg:hidden">
-        <Link href="/dashboard" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white shadow-[0_2px_8px_rgba(0,0,0,0.25)] ring-1 ring-white/20">
-            <Image src="/logo/B-one Production (1).png" alt="Beone Production logo" width={32} height={32} className="h-full w-full object-contain" priority />
-          </div>
-          <span className="font-display text-base tracking-wide text-white">Beone Production</span>
-        </Link>
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/10 bg-blue-950/95 px-4 text-white shadow-[0_6px_20px_rgba(0,15,35,0.28)] backdrop-blur-xl lg:hidden">
+        <Brand compact />
         <button
-          onClick={() => setOpen(true)}
-          aria-label="Open menu"
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-blue-50 transition hover:bg-white/10"
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          aria-label="Open navigation"
+          aria-expanded={mobileOpen}
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.08] text-blue-100 ring-1 ring-white/10 transition hover:bg-white/[0.14] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
         >
           <FiMenu size={20} aria-hidden="true" />
         </button>
-      </div>
+      </header>
 
-      {open && (
-        <div
-          className="fixed inset-0 z-40 bg-blue-950/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* ── Sidebar panel ── */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[80%] -translate-x-full flex-col overflow-hidden text-white shadow-[12px_0_48px_rgba(0,20,60,0.35)] transition-transform duration-300 ease-in-out lg:sticky lg:inset-auto lg:top-0 lg:z-0 lg:h-screen lg:w-64 lg:max-w-none lg:translate-x-0 lg:shrink-0 lg:transition-none ${
-          open ? 'translate-x-0' : '-translate-x-full'
+      <button
+        type="button"
+        onClick={() => setMobileOpen(false)}
+        aria-label="Close navigation"
+        className={`fixed inset-0 z-40 bg-blue-950/45 backdrop-blur-sm transition-opacity duration-300 lg:hidden ${
+          mobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
         }`}
-        style={{
-          background: 'linear-gradient(160deg, #072747 0%, #0b3e6c 45%, #064a83 100%)',
-        }}
-      >
-        {/* top-edge 3-D highlight */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-        {/* ambient glow blobs */}
-        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-blue-400/10 blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-16 -left-8 h-48 w-48 rounded-full bg-blue-300/8 blur-3xl" />
-        {/* right-edge inner shadow */}
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-white/10 via-white/5 to-transparent" />
+      />
 
-        {/* ── Logo header ── */}
-        <div className="relative flex items-center justify-between border-b border-white/10 px-4 py-5 lg:px-6 lg:py-6">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            {/* logo with 3-D raised effect */}
-            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-[0_4px_14px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-white/30">
-              <Image src="/logo/B-one Production (1).png" alt="Beone Production logo" width={40} height={40} className="h-full w-full object-contain" priority />
-            </div>
-            <div>
-              <span className="font-display text-base leading-tight tracking-wide text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.4)]">
-                Beone Production
-              </span>
-              <p className="mt-0.5 text-[9px] uppercase tracking-[0.24em] text-blue-200/50">Workspace</p>
-            </div>
-          </Link>
+      <aside
+        aria-label="Main navigation"
+        className={`fixed inset-y-0 left-0 z-50 flex w-[17.5rem] max-w-[86vw] flex-col border-r border-white/10 bg-[linear-gradient(165deg,#061b30_0%,#082e50_58%,#064a76_100%)] text-white shadow-[16px_0_50px_rgba(0,15,35,0.38)] transition-transform duration-300 ease-out lg:sticky lg:top-0 lg:z-0 lg:h-screen lg:w-64 lg:max-w-none lg:shrink-0 lg:translate-x-0 lg:shadow-[6px_0_28px_rgba(7,39,71,0.16)] ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-70"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+          }}
+        />
+   
+        <div className="flex h-[5.25rem] shrink-0 items-center justify-between border-b border-white/10 px-5">
+          <Brand />
           <button
-            onClick={() => setOpen(false)}
-            aria-label="Close menu"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-blue-50 transition hover:bg-white/10 lg:hidden"
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close navigation"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-blue-100/65 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 lg:hidden"
           >
-            <FiX size={18} aria-hidden="true" />
+            <FiX size={19} aria-hidden="true" />
           </button>
         </div>
 
-        {/* ── Nav label ── */}
-        <div className="px-5 pt-5">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-blue-200/35">Navigation</p>
-        </div>
+        <nav className="scrollbar-hide flex-1 overflow-y-auto px-3 py-5">
+          <NavigationLabel>Workspace</NavigationLabel>
+          <div className="space-y-1.5">
+            {workspaceLinks.map((item) => (
+              <NavigationLink key={item.href} item={item} pathname={pathname} />
+            ))}
 
-        {/* ── Nav links ── */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4 scrollbar-hide">
-          {showCreateAccount && (
-            <div
-              className="relative"
-              onMouseEnter={() => setCreateMenuOpen(true)}
-              onMouseLeave={() => setCreateMenuOpen(false)}
-            >
-              <button
-                type="button"
-                onClick={() => setCreateMenuOpen((v) => !v)}
-                aria-expanded={createMenuOpen}
-                aria-haspopup="true"
-                className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  createAccountActive
-                    ? 'bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_12px_rgba(0,0,0,0.2)]'
-                    : 'text-blue-100/55 hover:bg-white/8 hover:text-blue-50'
-                }`}
-              >
-                {createAccountActive && (
-                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-blue-300 shadow-[0_0_8px_rgba(147,197,253,0.8)]" />
-                )}
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
-                  createAccountActive
-                    ? 'bg-white/15 shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.2)] text-white'
-                    : 'text-blue-200/60 group-hover:text-blue-100'
-                }`}>
-                  <FiUserPlus size={16} aria-hidden="true" />
-                </span>
-                <span className="flex-1 text-left">Create account</span>
-                <FiChevronRight
-                  size={14}
-                  aria-hidden="true"
-                  className={`shrink-0 text-blue-200/50 transition-transform duration-200 ${createMenuOpen ? 'rotate-90' : ''}`}
-                />
-              </button>
+            {showReports && (
+              <NavigationGroup
+                id="reports-menu"
+                label="Reports"
+                icon={FiBarChart2}
+                items={reportLinks}
+                pathname={pathname}
+                active={reportsActive}
+                open={reportsOpen}
+                childDotOnly
+                onToggle={() => setReportsOpen((current) => !current)}
+              />
+            )}
+          </div>
 
-              {createMenuOpen && (
-                <div className="ml-4 mt-1 space-y-1 border-l border-white/10 pl-3">
-                  {createAccountLinks.map((sub) => {
-                    const subActive = pathname === sub.href;
-                    const SubIcon = sub.icon;
-                    return (
-                      <Link
-                        key={sub.href}
-                        href={sub.href}
-                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                          subActive
-                            ? 'bg-white/12 text-white'
-                            : 'text-blue-100/50 hover:bg-white/8 hover:text-blue-50'
-                        }`}
-                      >
-                        <SubIcon size={14} aria-hidden="true" />
-                        <span>{sub.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
+          {showAccounts && (
+            <div className="mt-7">
+              <NavigationLabel>Administration</NavigationLabel>
+              <NavigationGroup
+                id="accounts-menu"
+                label="Accounts"
+                icon={FiUserPlus}
+                items={accountLinks}
+                pathname={pathname}
+                active={accountsActive}
+                open={accountsOpen}
+                childDotOnly
+                onToggle={() => setAccountsOpen((current) => !current)}
+              />
             </div>
           )}
 
-          {links.map((link) => {
-            const active = pathname === link.href;
-            const Icon = link.icon;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                aria-current={active ? 'page' : undefined}
-                className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  active
-                    ? 'bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_12px_rgba(0,0,0,0.2)]'
-                    : 'text-blue-100/55 hover:bg-white/8 hover:text-blue-50'
-                }`}
-              >
-                {/* active left accent bar */}
-                {active && (
-                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-blue-300 shadow-[0_0_8px_rgba(147,197,253,0.8)]" />
-                )}
-                {/* icon container — raised tile look when active */}
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
-                  active
-                    ? 'bg-white/15 shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.2)] text-white'
-                    : 'text-blue-200/60 group-hover:text-blue-100'
-                }`}>
-                  <Icon size={16} aria-hidden="true" />
-                </span>
-                <span>{link.label}</span>
-              </Link>
-            );
-          })}
-
-          {showReportsMenu && (
-            <div
-              className="relative"
-              onMouseEnter={() => setReportsMenuOpen(true)}
-              onMouseLeave={() => setReportsMenuOpen(false)}
-            >
-              <button
-                type="button"
-                onClick={() => setReportsMenuOpen((v) => !v)}
-                aria-expanded={reportsMenuOpen}
-                aria-haspopup="true"
-                className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  reportsActive
-                    ? 'bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_12px_rgba(0,0,0,0.2)]'
-                    : 'text-blue-100/55 hover:bg-white/8 hover:text-blue-50'
-                }`}
-              >
-                {reportsActive && (
-                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-blue-300 shadow-[0_0_8px_rgba(147,197,253,0.8)]" />
-                )}
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
-                  reportsActive
-                    ? 'bg-white/15 shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.2)] text-white'
-                    : 'text-blue-200/60 group-hover:text-blue-100'
-                }`}>
-                  <FiBarChart2 size={16} aria-hidden="true" />
-                </span>
-                <span className="flex-1 text-left">Reports</span>
-                <FiChevronRight
-                  size={14}
-                  aria-hidden="true"
-                  className={`shrink-0 text-blue-200/50 transition-transform duration-200 ${reportsMenuOpen ? 'rotate-90' : ''}`}
-                />
-              </button>
-
-              {reportsMenuOpen && (
-                <div className="ml-4 mt-1 space-y-1 border-l border-white/10 pl-3">
-                  {reportsLinks.map((sub) => {
-                    const subActive = pathname === sub.href;
-                    const SubIcon = sub.icon;
-                    return (
-                      <Link
-                        key={sub.href}
-                        href={sub.href}
-                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                          subActive
-                            ? 'bg-white/12 text-white'
-                            : 'text-blue-100/50 hover:bg-white/8 hover:text-blue-50'
-                        }`}
-                      >
-                        <SubIcon size={14} aria-hidden="true" />
-                        <span>{sub.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
+          {showSettings && (
+            <div className="mt-1.5">
+              <NavigationLink
+                item={{ href: '/dashboard/settings', label: 'Settings', icon: FiSettings }}
+                pathname={pathname}
+              />
             </div>
           )}
-
-          {showSettings && (() => {
-            const active = pathname === settingsLink.href;
-            const Icon = settingsLink.icon;
-            return (
-              <Link
-                href={settingsLink.href}
-                aria-current={active ? 'page' : undefined}
-                className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  active
-                    ? 'bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_12px_rgba(0,0,0,0.2)]'
-                    : 'text-blue-100/55 hover:bg-white/8 hover:text-blue-50'
-                }`}
-              >
-                {active && (
-                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-blue-300 shadow-[0_0_8px_rgba(147,197,253,0.8)]" />
-                )}
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
-                  active
-                    ? 'bg-white/15 shadow-[0_2px_8px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.2)] text-white'
-                    : 'text-blue-200/60 group-hover:text-blue-100'
-                }`}>
-                  <Icon size={16} aria-hidden="true" />
-                </span>
-                <span>{settingsLink.label}</span>
-              </Link>
-            );
-          })()}
         </nav>
 
-        {/* ── User card ── */}
-        <div className="relative border-t border-white/10 p-3 lg:p-4">
-          {/* card with 3-D inset look */}
-          <div className="overflow-hidden rounded-2xl bg-white/[0.06] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.10),inset_0_-1px_0_rgba(0,0,0,0.15)] ring-1 ring-white/8">
-            <div className="flex items-center gap-3">
-              {/* avatar — raised circle */}
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-400/30 to-blue-600/30 text-sm font-semibold uppercase text-blue-100 shadow-[0_2px_8px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)]">
-                {name.trim().charAt(0) || 'U'}
+        <footer className="shrink-0 border-t border-white/10 p-3.5">
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.07] p-3.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_28px_-14px_rgba(0,10,30,0.65)] backdrop-blur-sm">
+            <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-blue-300/10 blur-2xl" />
+            <div className="relative flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-200 to-blue-400 text-sm font-extrabold text-blue-950 shadow-sm">
+                {initial}
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-white">{name}</p>
-                <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-blue-200/45">{role}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{name || 'User'}</p>
+                <p className="mt-0.5 truncate text-[10px] font-semibold capitalize tracking-wide text-blue-200/70">
+                  {roleLabel}
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={signingOut}
+                aria-label={signingOut ? 'Signing out' : 'Sign out'}
+                title="Sign out"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.08] text-blue-100 ring-1 ring-white/10 transition hover:bg-red-400/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-wait disabled:opacity-50"
+              >
+                {signingOut ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                ) : (
+                  <FiLogOut size={16} aria-hidden="true" />
+                )}
+              </button>
             </div>
-            <button
-              onClick={handleLogout}
-              title="Sign out"
-              className="mt-2.5 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-blue-100/50 transition hover:bg-red-400/12 hover:text-red-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/50"
-            >
-              <FiLogOut size={14} aria-hidden="true" />
-              <span>Sign out</span>
-            </button>
           </div>
-        </div>
+        </footer>
       </aside>
     </>
+  );
+}
+
+function Brand({ compact = false }: { compact?: boolean }) {
+  return (
+    <Link
+      href="/dashboard"
+      className="group flex min-w-0 items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+    >
+      <span
+        className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-white/20 ${
+          compact ? 'h-9 w-9' : 'h-11 w-11'
+        }`}
+      >
+        <Image
+          src={LOGO_PATH}
+          alt="Beone Production logo"
+          width={40}
+          height={40}
+          className="h-[90%] w-[90%] object-contain transition-transform duration-300 group-hover:scale-105"
+          priority
+        />
+      </span>
+      <span className="min-w-0">
+        <span className={`block truncate font-display font-bold tracking-tight text-white ${compact ? 'text-sm' : 'text-base'}`}>
+          Beone Production
+        </span>
+        {!compact && (
+          <span className="mt-0.5 block text-[9px] font-semibold uppercase tracking-[0.2em] text-blue-200/55">
+            Operations workspace
+          </span>
+        )}
+      </span>
+    </Link>
+  );
+}
+
+function NavigationLabel({ children }: { children: string }) {
+  return (
+    <p className="mb-2.5 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-200/45">
+      {children}
+    </p>
+  );
+}
+
+function NavigationLink({
+  item,
+  pathname,
+  nested = false,
+  dotOnly = false,
+}: {
+  item: NavItem;
+  pathname: string;
+  nested?: boolean;
+  dotOnly?: boolean;
+}) {
+  const active = item.matches ? item.matches(pathname) : pathname === item.href;
+  const Icon = item.icon;
+  const dotOnlyActive = nested && dotOnly && active;
+
+  return (
+    <Link
+      href={item.href}
+      aria-current={active ? 'page' : undefined}
+      className={`group flex items-center gap-3 rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+        nested ? 'px-2.5 py-2 text-[13px]' : 'px-2.5 py-2.5 text-sm'
+      } ${
+        dotOnlyActive
+          ? 'text-white'
+          : active
+          ? 'bg-white text-blue-950 shadow-[0_10px_24px_-14px_rgba(0,0,0,0.8)]'
+          : 'text-blue-100/65 hover:bg-white/[0.08] hover:text-white'
+      }`}
+    >
+      <span
+        className={`flex shrink-0 items-center justify-center rounded-lg transition-colors ${
+          nested ? 'h-7 w-7' : 'h-8 w-8'
+        } ${dotOnlyActive ? 'bg-white/[0.08] text-blue-100' : active ? 'bg-blue-100 text-blue-700' : 'bg-white/[0.06] text-blue-200/65 group-hover:bg-white/10 group-hover:text-blue-100'}`}
+      >
+        <Icon size={nested ? 14 : 16} aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      {active && (
+        <span
+          className={`rounded-full ${dotOnlyActive ? 'h-2 w-2 bg-cyan-300 shadow-[0_0_9px_rgba(103,232,249,0.85)]' : 'h-1.5 w-1.5 bg-blue-500'}`}
+          aria-hidden="true"
+        />
+      )}
+    </Link>
+  );
+}
+
+type NavigationGroupProps = {
+  id: string;
+  label: string;
+  icon: IconType;
+  items: NavItem[];
+  pathname: string;
+  active: boolean;
+  open: boolean;
+  childDotOnly?: boolean;
+  onToggle: () => void;
+};
+
+function NavigationGroup({ id, label, icon: Icon, items, pathname, active, open, childDotOnly = false, onToggle }: NavigationGroupProps) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={id}
+        className={`group flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+          active
+            ? 'bg-white text-blue-950 shadow-[0_10px_24px_-14px_rgba(0,0,0,0.8)]'
+            : 'text-blue-100/65 hover:bg-white/[0.08] hover:text-white'
+        }`}
+      >
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${active ? 'bg-blue-100 text-blue-700' : 'bg-white/[0.06] text-blue-200/65 group-hover:bg-white/10 group-hover:text-blue-100'}`}>
+          <Icon size={16} aria-hidden="true" />
+        </span>
+        <span className="flex-1 text-left">{label}</span>
+        <FiChevronDown
+          size={15}
+          aria-hidden="true"
+          className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      <div
+        id={id}
+        className={`grid transition-[grid-template-rows,opacity] duration-200 ${
+          open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="ml-5 mt-1.5 space-y-1 border-l-2 border-white/10 pl-3">
+            {items.map((item) => (
+              <NavigationLink key={item.href} item={item} pathname={pathname} nested dotOnly={childDotOnly} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

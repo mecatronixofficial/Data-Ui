@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiCheck, FiKey, FiSettings, FiShield, FiUser } from 'react-icons/fi';
+import { FiCheck, FiKey, FiSettings, FiShield, FiUser, FiX } from 'react-icons/fi';
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 
@@ -23,6 +23,8 @@ export default function SettingsPage() {
   const [mfaRequired, setMfaRequired] = useState(true);
   const [mfaLoading, setMfaLoading] = useState(true);
   const [mfaSaving, setMfaSaving] = useState(false);
+  const [mfaConfirmOpen, setMfaConfirmOpen] = useState(false);
+  const [mfaCode, setMfaCode] = useState('');
 
   useEffect(() => {
     api.me()
@@ -88,10 +90,14 @@ export default function SettingsPage() {
   async function handleMfaToggle() {
     if (mfaLoading || mfaSaving) return;
     const nextEnabled = !mfaRequired;
-    const confirmation = nextEnabled
-      ? 'Turn on MFA for your Super Admin account? You will be signed out and receive a new QR code at the next login.'
-      : 'Turn off MFA for your Super Admin account? Your existing authenticator and recovery codes will stop working.';
-    if (!window.confirm(confirmation)) return;
+
+    if (!nextEnabled) {
+      setMfaCode('');
+      setMfaConfirmOpen(true);
+      return;
+    }
+
+    if (!window.confirm('Turn on MFA? You will sign in again and scan a new QR code.')) return;
 
     setMfaSaving(true);
     try {
@@ -101,6 +107,26 @@ export default function SettingsPage() {
         await api.logout();
         router.replace('/login');
       }
+    } catch {
+      // The API client shows the error notification.
+    } finally {
+      setMfaSaving(false);
+    }
+  }
+
+  async function handleMfaDisable(e: React.FormEvent) {
+    e.preventDefault();
+    if (mfaSaving || !/^\d{6}$/.test(mfaCode)) {
+      if (!/^\d{6}$/.test(mfaCode)) toast.error('Enter the 6-digit code from your authenticator app.');
+      return;
+    }
+
+    setMfaSaving(true);
+    try {
+      const policy = await api.updateMfaPolicy(false, mfaCode);
+      setMfaRequired(policy.enabled !== false);
+      setMfaCode('');
+      setMfaConfirmOpen(false);
     } catch {
       // The API client shows the error notification.
     } finally {
@@ -193,11 +219,8 @@ export default function SettingsPage() {
             <div>
               <h2 className="font-display text-xl text-blue-950">My multi-factor authentication</h2>
               <p className="mt-1 max-w-xl text-sm leading-6 text-black">
-                {mfaRequired
-                  ? 'ON — your Super Admin account must verify an authenticator code when signing in.'
-                  : 'OFF — your Super Admin account can sign in with only User ID/email and password.'}
+                {mfaRequired ? 'Authenticator verification is enabled.' : 'Authenticator verification is disabled.'}
               </p>
-              <p className="mt-1 text-xs text-black">Admin and User accounts always require MFA. Turning this back on creates a new QR code for you.</p>
             </div>
           </div>
 
@@ -251,6 +274,80 @@ export default function SettingsPage() {
           </div>
         </div>
       </form>
+
+      {mfaConfirmOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-blue-950/55 p-4 backdrop-blur-sm" role="presentation">
+          <form
+            onSubmit={handleMfaDisable}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mfa-confirm-title"
+            className="w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-white shadow-[0_24px_70px_rgba(0,20,55,0.38)]"
+          >
+            <div className="flex items-start justify-between gap-4 bg-gradient-to-br from-blue-950 via-blue-800 to-blue-600 px-5 py-4 text-white">
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/15">
+                  <FiShield size={18} aria-hidden="true" />
+                </span>
+                <div>
+                  <h3 id="mfa-confirm-title" className="font-display text-lg font-bold">Verify turn off</h3>
+                  <p className="mt-1 text-xs font-medium text-blue-100/80">Security confirmation required</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setMfaConfirmOpen(false); setMfaCode(''); }}
+                disabled={mfaSaving}
+                aria-label="Close verification"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-blue-100 transition hover:bg-white/20 hover:text-white disabled:opacity-50"
+              >
+                <FiX size={18} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="p-5">
+              <label htmlFor="mfa-disable-code" className="mb-2 block text-xs font-bold uppercase tracking-wider text-blue-950">
+                6-digit authenticator code
+              </label>
+              <input
+                id="mfa-disable-code"
+                autoFocus
+                required
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                className="h-11 w-full rounded-xl border border-blue-100 bg-blue-50/60 px-4 text-center font-mono text-xl font-bold tracking-[0.3em] text-blue-950 outline-none transition placeholder:text-blue-200 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/15"
+              />
+              <p className="mt-2 text-xs font-medium leading-5 text-slate-600">
+                Enter a new code from your authenticator app to turn off MFA.
+              </p>
+
+              <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => { setMfaConfirmOpen(false); setMfaCode(''); }}
+                  disabled={mfaSaving}
+                  className="rounded-xl border border-blue-100 px-5 py-2.5 text-sm font-bold text-blue-900 transition hover:bg-blue-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={mfaSaving || mfaCode.length !== 6}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-red-500 px-5 py-2.5 text-sm font-bold text-white shadow-[0_7px_18px_rgba(220,38,38,0.25)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0"
+                >
+                  {mfaSaving && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
+                  {mfaSaving ? 'Verifying...' : 'Verify and turn off'}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
