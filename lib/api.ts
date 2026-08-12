@@ -145,14 +145,14 @@ export const api = {
   logout: () => request('/auth/logout', { method: 'POST' }, { success: 'You have been signed out.' })
     .finally(clearCurrentUserCache),
   me: getCurrentUser,
-  updateProfile: (payload: { name?: string; email?: string }) =>
+  updateProfile: (payload: { name?: string; email?: string; message?: string }) =>
     request('/auth/me', { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Your profile was updated.' })
       .then((value) => { clearCurrentUserCache(); return value; }),
   changePassword: (payload: { currentPassword: string; newPassword: string }) =>
     request('/auth/me/password', { method: 'PUT', body: JSON.stringify(payload) }, { success: 'Your password was updated.' }),
   getMfaPolicy: (): Promise<{ enabled: boolean }> => request('/auth/mfa/settings', { cache: 'no-store' }),
-  updateMfaPolicy: (enabled: boolean): Promise<{ enabled: boolean }> =>
-    request('/auth/mfa/settings', { method: 'PUT', body: JSON.stringify({ enabled }) }, { success: `MFA is now ${enabled ? 'on' : 'off'} for your Super Admin account.` }),
+  updateMfaPolicy: (enabled: boolean, code?: string): Promise<{ enabled: boolean }> =>
+    request('/auth/mfa/settings', { method: 'PUT', body: JSON.stringify({ enabled, ...(code ? { code } : {}) }) }, { success: `MFA is now ${enabled ? 'on' : 'off'} for your Super Admin account.` }),
 
   createEntry: (payload: any) =>
     request('/entries', { method: 'POST', body: JSON.stringify(payload) }, { success: 'Team report saved. Your values will remain available.' }),

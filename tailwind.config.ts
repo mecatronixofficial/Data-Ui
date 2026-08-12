@@ -45,9 +45,28 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ['Georgia', 'Cambria', 'Times New Roman', 'serif'],
-        body: ['Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-        mono: ['IBM Plex Mono', 'Cascadia Mono', 'Consolas', 'monospace'],
+        // Humanist sans-serif for page titles and section headings. It stays
+        // distinctive without looking decorative inside a data-entry product.
+        display: [
+          'Trebuchet MS',
+          'Aptos Display',
+          'Segoe UI Variable Display',
+          'Segoe UI',
+          'Arial',
+          'sans-serif',
+        ],
+        // Neutral UI stack for paragraphs, labels, controls, and entered data.
+        body: [
+          'Aptos',
+          'Segoe UI Variable Text',
+          'Segoe UI',
+          'Roboto',
+          'Helvetica Neue',
+          'Arial',
+          'sans-serif',
+        ],
+        // Reserved for verification codes, recovery codes, and tabular values.
+        mono: ['Cascadia Mono', 'IBM Plex Mono', 'Consolas', 'Courier New', 'monospace'],
       },
       boxShadow: {
         card: '0 1px 2px rgba(20,22,28,0.04), 0 8px 24px rgba(20,22,28,0.06)',

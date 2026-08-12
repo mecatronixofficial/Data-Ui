@@ -65,7 +65,7 @@ export default function DynamicFieldsForm({
 
   return (
     <>
-      <div className={`grid items-stretch gap-4 ${fields.length > 1 ? 'lg:grid-cols-2' : 'grid-cols-1'}`}>
+      <div className="grid grid-cols-1 items-stretch gap-4">
         {fields.map((field, fieldIndex) => {
           const groupA = sum(field.boxes.slice(0, field.groupSplit));
           const groupB = sum(field.boxes.slice(field.groupSplit));
@@ -77,25 +77,24 @@ export default function DynamicFieldsForm({
           return (
             <section
               key={field.name}
-              className="entry-field-card relative flex h-full flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_8px_28px_rgba(7,39,71,0.06)]"
+              className="entry-field-card relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white"
             >
               {accentHex ? (
-                <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5" style={{ backgroundColor: accentHex }} />
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1" style={{ backgroundColor: accentHex }} />
               ) : (
-                <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-gradient-to-r from-blue-500 via-blue-300 to-transparent" />
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1 bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400" />
               )}
-              <div className="entry-field-card-header flex flex-col gap-3 border-b border-blue-100 bg-blue-50/25 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="entry-field-card-header flex flex-col gap-3 border-b border-slate-100 px-4 pb-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 w-full items-center justify-between gap-3">
 
-                  <div className="min-w-0">
-                    <h2 className="inline-flex items-center w-full gap-2 truncate font-display text-base font-semibold text-blue-950">
-                      {field.icon && (
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 font-display text-xs text-blue-950">
-                          <FieldIcon icon={field.icon} size={16} />
-                        </span>
-                      )}
-                      {field.name}
-                    </h2>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-950 font-display text-xs font-extrabold text-white shadow-[0_8px_18px_-10px_rgba(7,39,71,0.8)]">
+                      {field.icon ? <FieldIcon icon={field.icon} size={17} /> : String(fieldIndex + 1).padStart(2, '0')}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[8px] font-extrabold uppercase tracking-[0.18em] text-blue-500">Field {String(fieldIndex + 1).padStart(2, '0')}</p>
+                      <h2 className="mt-0.5 truncate font-display text-base font-bold text-blue-950">{field.name}</h2>
+                    </div>
                   </div>
                   <div className="min-w-0">
                     <h2 className="inline-flex items-center w-full gap-2 truncate font-display text-base font-semibold text-blue-950">
@@ -106,6 +105,9 @@ export default function DynamicFieldsForm({
                       )}
                     </h2>
                   </div>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wide text-slate-500 ring-1 ring-inset ring-slate-200">
+                    {field.boxes.length} box{field.boxes.length === 1 ? '' : 'es'}
+                  </span>
                 </div>
                 {canReset && !field.locked && (
                   <button
@@ -113,14 +115,14 @@ export default function DynamicFieldsForm({
                     onClick={() => setConfirmIndex(fieldIndex)}
                     aria-label={`Reset ${field.name} values`}
                     title="Reset field values"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center self-end rounded-lg border border-transparent text-black transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600 sm:self-auto"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center self-end rounded-xl border border-slate-200 bg-white text-slate-400 shadow-sm transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600 sm:self-auto"
                   >
                     <FiRefreshCw size={15} />
                   </button>
                 )}
               </div>
 
-              <div className="entry-field-card-body grid flex-1 grid-cols-2 content-start gap-2 bg-white p-3 sm:grid-cols-3 xl:grid-cols-4">
+              <div className="entry-field-card-body grid flex-1 grid-cols-2 content-start gap-3 p-4 sm:grid-cols-3 xl:grid-cols-4">
                 {field.boxes.map((val, boxIndex) => (
                   <TallyBox
                     idPrefix={`field-${fieldIndex}`}
@@ -140,7 +142,8 @@ export default function DynamicFieldsForm({
                 ))}
               </div>
 
-              <div className="entry-field-card-footer flex items-center justify-end overflow-x-auto border-t border-blue-100 bg-blue-50/40 px-3 py-2 sm:px-4">
+              <div className="entry-field-card-footer flex items-center justify-between gap-3 overflow-x-auto border-t border-slate-100 px-4 py-3">
+                <span className="shrink-0 text-[8px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Field total</span>
                 {field.calcType === 'grouped' ? (
                   <div className="flex shrink-0 items-center gap-2">
                     <TotalPill label="" value={groupA} />
@@ -274,7 +277,7 @@ export function FinalTotalCard({
           </div>
         )}
 
-        <div className={`flex min-w-[5rem] shrink-0 items-center justify-end rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2 ${single ? 'xl:col-start-3' : ''
+        <div className={`flex min-w-[5rem] shrink-0 items-center justify-end rounded-xl border border-blue-100 bg-white px-3 py-2 ${single ? 'xl:col-start-3' : ''
           }`}>
           <span
             className={`font-mono text-2xl font-semibold tracking-tight tabular ${finalTotal < 0 ? 'text-red-600' : finalTotal > 0 ? 'text-blue-950' : 'text-blue-950'

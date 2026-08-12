@@ -57,6 +57,17 @@ body {
   }
 }
 
+@keyframes workspace-progress {
+  0% { transform: translateX(-110%); }
+  50% { transform: translateX(90%); }
+  100% { transform: translateX(250%); }
+}
+
+@keyframes project-bar {
+  0%, 100% { transform: scaleY(0.55); opacity: 0.55; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
 .animate-toast-in {
   animation: toast-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -74,27 +85,109 @@ body {
 
 /* Give every entry-page label, value, control, and dialog a stronger weight. */
 .entry-page {
-  font-weight: 600;
-}
-
-.entry-page .font-normal {
-  font-weight: 500;
-}
-
-.entry-page .font-medium {
-  font-weight: 600;
-}
-
-.entry-page .font-semibold {
   font-weight: 700;
 }
 
-.entry-page .font-bold {
+.entry-page .font-normal {
+  font-weight: 600;
+}
+
+.entry-page .font-medium {
+  font-weight: 700;
+}
+
+.entry-page .font-semibold {
   font-weight: 800;
 }
 
+.entry-page .font-bold {
+  font-weight: 900;
+}
+
+.entry-page input,
+.entry-page textarea,
+.entry-page select,
+.entry-page button {
+  font-weight: 700;
+}
+
+.entry-page input::placeholder,
+.entry-page textarea::placeholder {
+  font-weight: 600;
+}
+
+/* Box names, displayed totals, and values typed inside expanded boxes. */
+.entry-page .entry-tally-card,
+.entry-page .entry-tally-card input,
+.entry-page .entry-tally-card textarea,
+.entry-page .entry-tally-card select,
+.entry-page .entry-tally-card .font-mono {
+  font-weight: 800;
+}
+
+.entry-page [role='dialog'] h2,
+.entry-page [role='dialog'] h3,
+.entry-page [role='dialog'] th,
+.entry-page [role='dialog'] label,
+.entry-page [role='dialog'] input,
+.entry-page [role='dialog'] textarea,
+.entry-page [role='dialog'] select,
+.entry-page [role='dialog'] .font-mono {
+  font-weight: 800;
+}
+
+/* One-step type scale increase, scoped to the new/edit entry workspace. */
+.entry-page .text-xs {
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+}
+
+.entry-page .text-sm {
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
+}
+
+.entry-page .text-base {
+  font-size: 1.0625rem;
+  line-height: 1.5rem;
+}
+
+.entry-page .text-lg {
+  font-size: 1.25rem;
+  line-height: 1.65rem;
+}
+
+.entry-page .text-xl {
+  font-size: 1.375rem;
+  line-height: 1.75rem;
+}
+
+.entry-page .text-2xl {
+  font-size: 1.7rem;
+  line-height: 2rem;
+}
+
+.entry-page .text-\[5px\] { font-size: 0.4rem; line-height: 1.2; }
+.entry-page .text-\[6px\] { font-size: 0.5rem; line-height: 1.2; }
+.entry-page .text-\[8px\] { font-size: 0.6rem; line-height: 1.2; }
+.entry-page .text-\[9px\] { font-size: 0.6875rem; line-height: 1.25; }
+.entry-page .text-\[10px\] { font-size: 0.75rem; line-height: 1.3; }
+.entry-page .text-\[11px\] { font-size: 0.8125rem; line-height: 1.3; }
+
+.entry-page input,
+.entry-page textarea,
+.entry-page select {
+  font-size: 1rem;
+}
+
+.entry-page .entry-tally-card .font-mono {
+  font-size: 1.0625rem;
+  line-height: 1.35rem;
+}
+
 .entry-page svg {
-  scale: 1.2;
+  scale: 1.3;
+  stroke-width: 2.35;
   transform-origin: center;
 }
 
@@ -105,7 +198,7 @@ body {
 /* Glossy entry-page surfaces; scoped so the shared report editor stays unchanged. */
 .entry-page .entry-field-card {
   border-color: rgb(191 219 254 / 0.9);
-  background: linear-gradient(145deg, #ffffff 0%, #f5f9ff 55%, #ecfdf5 100%);
+  background: #ffffff;
   box-shadow:
     0 14px 32px rgb(7 39 71 / 0.10),
     inset 0 1px 0 rgb(255 255 255 / 0.95);
@@ -113,24 +206,24 @@ body {
 
 .entry-page .entry-field-card-header {
   border-color: rgb(191 219 254 / 0.8);
-  background: linear-gradient(135deg, rgb(239 246 255 / 0.96), rgb(255 255 255 / 0.94) 58%, rgb(236 253 245 / 0.82));
+  background: #ffffff;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9);
 }
 
 .entry-page .entry-field-card-body {
-  background: linear-gradient(150deg, #ffffff 0%, #f8fbff 62%, #f0fdf9 100%);
+  background: #ffffff;
 }
 
 .entry-page .entry-field-card-footer {
   border-color: rgb(191 219 254 / 0.75);
-  background: linear-gradient(90deg, rgb(239 246 255 / 0.92), rgb(255 255 255 / 0.96), rgb(236 253 245 / 0.75));
+  background: #ffffff;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9);
 }
 
 .entry-page .entry-tally-card {
   border-color: rgb(147 197 253 / 0.75);
-  border-radius: 0.75rem;
-  background: linear-gradient(145deg, #ffffff 0%, #eff6ff 72%, #ecfeff 100%);
+  border-radius: 0.5rem;
+  background: #ffffff;
   box-shadow:
     0 7px 16px rgb(0 107 196 / 0.10),
     inset 0 1px 0 rgb(255 255 255 / 0.95);
@@ -142,12 +235,12 @@ body {
   height: 46%;
   pointer-events: none;
   content: '';
-  background: linear-gradient(to bottom, rgb(255 255 255 / 0.72), transparent);
+  background: transparent;
 }
 
 .entry-page .entry-tally-card:hover {
   border-color: rgb(59 130 246 / 0.8);
-  background: linear-gradient(145deg, #ffffff 0%, #dbeafe 72%, #cffafe 100%);
+  background: #ffffff;
   box-shadow:
     0 13px 24px rgb(0 107 196 / 0.18),
     inset 0 1px 0 rgb(255 255 255 / 0.95);
@@ -155,7 +248,7 @@ body {
 
 .entry-page .entry-final-total {
   border-color: rgb(147 197 253 / 0.85);
-  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 48%, #ecfdf5 100%);
+  background: #ffffff;
   box-shadow:
     0 15px 34px rgb(0 107 196 / 0.14),
     inset 0 1px 0 rgb(255 255 255 / 0.96);
@@ -167,7 +260,7 @@ body {
   height: 50%;
   pointer-events: none;
   content: '';
-  background: linear-gradient(to bottom, rgb(255 255 255 / 0.45), transparent);
+  background: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {
