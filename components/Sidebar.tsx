@@ -41,6 +41,7 @@ export default function Sidebar({ role, name, permissions }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [accountsOpen, setAccountsOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -136,7 +137,9 @@ export default function Sidebar({ role, name, permissions }: SidebarProps) {
 
       <aside
         aria-label="Main navigation"
-        className={`fixed inset-y-0 left-0 z-50 flex w-[17.5rem] max-w-[86vw] flex-col border-r border-white/10 bg-[linear-gradient(165deg,#061b30_0%,#082e50_58%,#064a76_100%)] text-white shadow-[16px_0_50px_rgba(0,15,35,0.38)] transition-transform duration-300 ease-out lg:sticky lg:top-0 lg:z-0 lg:h-screen lg:w-64 lg:max-w-none lg:shrink-0 lg:translate-x-0 lg:shadow-[6px_0_28px_rgba(7,39,71,0.16)] ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-[17.5rem] max-w-[86vw] flex-col border-r border-white/10 bg-[linear-gradient(165deg,#061b30_0%,#082e50_58%,#064a76_100%)] text-white shadow-[16px_0_50px_rgba(0,15,35,0.38)] transition-[transform,width] duration-300 ease-out lg:sticky lg:top-0 lg:z-0 lg:h-screen lg:max-w-none lg:shrink-0 lg:translate-x-0 lg:shadow-[6px_0_28px_rgba(7,39,71,0.16)] ${
+          collapsed ? 'lg:w-20' : 'lg:w-64'
+        } ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -150,8 +153,13 @@ export default function Sidebar({ role, name, permissions }: SidebarProps) {
           }}
         />
    
-        <div className="flex h-[5.25rem] shrink-0 items-center justify-between border-b border-white/10 px-5">
-          <Brand />
+        <div className={`flex h-[5.25rem] shrink-0 items-center justify-between border-b border-white/10 px-5 ${collapsed ? 'lg:justify-center lg:px-2' : ''}`}>
+          <div className="lg:hidden">
+            <Brand />
+          </div>
+          <div className="hidden lg:block">
+            <Brand collapsed={collapsed} onToggle={() => setCollapsed((current) => !current)} />
+          </div>
           <button
             type="button"
             onClick={() => setMobileOpen(false)}
@@ -162,11 +170,11 @@ export default function Sidebar({ role, name, permissions }: SidebarProps) {
           </button>
         </div>
 
-        <nav className="scrollbar-hide flex-1 overflow-y-auto px-3 py-5">
-          <NavigationLabel>Workspace</NavigationLabel>
+        <nav className={`scrollbar-hide flex-1 overflow-y-auto px-3 py-5 ${collapsed ? 'lg:px-2' : ''}`}>
+          <NavigationLabel collapsed={collapsed}>Workspace</NavigationLabel>
           <div className="space-y-1.5">
             {workspaceLinks.map((item) => (
-              <NavigationLink key={item.href} item={item} pathname={pathname} />
+              <NavigationLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
             ))}
 
             {showReports && (
@@ -178,6 +186,7 @@ export default function Sidebar({ role, name, permissions }: SidebarProps) {
                 pathname={pathname}
                 active={reportsActive}
                 open={reportsOpen}
+                collapsed={collapsed}
                 childDotOnly
                 onToggle={() => setReportsOpen((current) => !current)}
               />
@@ -185,8 +194,8 @@ export default function Sidebar({ role, name, permissions }: SidebarProps) {
           </div>
 
           {showAccounts && (
-            <div className="mt-7">
-              <NavigationLabel>Administration</NavigationLabel>
+            <div className={`mt-7 ${collapsed ? 'lg:mt-2' : ''}`}>
+              <NavigationLabel collapsed={collapsed}>Administration</NavigationLabel>
               <NavigationGroup
                 id="accounts-menu"
                 label="Accounts"
@@ -195,6 +204,7 @@ export default function Sidebar({ role, name, permissions }: SidebarProps) {
                 pathname={pathname}
                 active={accountsActive}
                 open={accountsOpen}
+                collapsed={collapsed}
                 childDotOnly
                 onToggle={() => setAccountsOpen((current) => !current)}
               />
@@ -206,19 +216,20 @@ export default function Sidebar({ role, name, permissions }: SidebarProps) {
               <NavigationLink
                 item={{ href: '/dashboard/settings', label: 'Settings', icon: FiSettings }}
                 pathname={pathname}
+                collapsed={collapsed}
               />
             </div>
           )}
         </nav>
 
-        <footer className="shrink-0 border-t border-white/10 p-3.5">
-          <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.07] p-3.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_28px_-14px_rgba(0,10,30,0.65)] backdrop-blur-sm">
+        <footer className={`shrink-0 border-t border-white/10 p-3.5 ${collapsed ? 'lg:p-2' : ''}`}>
+          <div className={`relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.07] p-3.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_28px_-14px_rgba(0,10,30,0.65)] backdrop-blur-sm ${collapsed ? 'lg:p-2' : ''}`}>
             <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-blue-300/10 blur-2xl" />
-            <div className="relative flex items-center gap-3">
+            <div className={`relative flex items-center gap-3 ${collapsed ? 'lg:flex-col lg:gap-2' : ''}`}>
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-200 to-blue-400 text-sm font-extrabold text-blue-950 shadow-sm">
                 {initial}
               </div>
-              <div className="min-w-0 flex-1">
+              <div className={`min-w-0 flex-1 ${collapsed ? 'lg:sr-only' : ''}`}>
                 <p className="truncate text-sm font-semibold">{name || 'User'}</p>
                 <p className="mt-0.5 truncate text-[10px] font-semibold capitalize tracking-wide text-blue-200/70">
                   {roleLabel}
@@ -246,12 +257,9 @@ export default function Sidebar({ role, name, permissions }: SidebarProps) {
   );
 }
 
-function Brand({ compact = false }: { compact?: boolean }) {
-  return (
-    <Link
-      href="/dashboard"
-      className="group flex min-w-0 items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-    >
+function Brand({ compact = false, collapsed = false, onToggle }: { compact?: boolean; collapsed?: boolean; onToggle?: () => void }) {
+  const content = (
+    <>
       <span
         className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-white/20 ${
           compact ? 'h-9 w-9' : 'h-11 w-11'
@@ -266,7 +274,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
           priority
         />
       </span>
-      <span className="min-w-0">
+      <span className={`min-w-0 ${collapsed ? 'lg:sr-only' : ''}`}>
         <span className={`block truncate font-display font-bold tracking-tight text-white ${compact ? 'text-sm' : 'text-base'}`}>
           Beone Production
         </span>
@@ -276,13 +284,32 @@ function Brand({ compact = false }: { compact?: boolean }) {
           </span>
         )}
       </span>
-    </Link>
+    </>
   );
+
+  const className = "group flex min-w-0 items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300";
+
+  if (onToggle) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-expanded={!collapsed}
+        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        className={className}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <Link href="/dashboard" className={className}>{content}</Link>;
 }
 
-function NavigationLabel({ children }: { children: string }) {
+function NavigationLabel({ children, collapsed = false }: { children: string; collapsed?: boolean }) {
   return (
-    <p className="mb-2.5 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-200/45">
+    <p className={`mb-2.5 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-200/45 ${collapsed ? 'lg:sr-only' : ''}`}>
       {children}
     </p>
   );
@@ -293,11 +320,13 @@ function NavigationLink({
   pathname,
   nested = false,
   dotOnly = false,
+  collapsed = false,
 }: {
   item: NavItem;
   pathname: string;
   nested?: boolean;
   dotOnly?: boolean;
+  collapsed?: boolean;
 }) {
   const active = item.matches ? item.matches(pathname) : pathname === item.href;
   const Icon = item.icon;
@@ -307,9 +336,11 @@ function NavigationLink({
     <Link
       href={item.href}
       aria-current={active ? 'page' : undefined}
+      aria-label={collapsed ? item.label : undefined}
+      title={collapsed ? item.label : undefined}
       className={`group flex items-center gap-3 rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
         nested ? 'px-2.5 py-2 text-[13px]' : 'px-2.5 py-2.5 text-sm'
-      } ${
+      } ${collapsed ? 'lg:justify-center lg:gap-0 lg:px-1.5' : ''} ${
         dotOnlyActive
           ? 'text-white'
           : active
@@ -324,10 +355,10 @@ function NavigationLink({
       >
         <Icon size={nested ? 14 : 16} aria-hidden="true" />
       </span>
-      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      <span className={`min-w-0 flex-1 truncate ${collapsed ? 'lg:sr-only' : ''}`}>{item.label}</span>
       {active && (
         <span
-          className={`rounded-full ${dotOnlyActive ? 'h-2 w-2 bg-cyan-300 shadow-[0_0_9px_rgba(103,232,249,0.85)]' : 'h-1.5 w-1.5 bg-blue-500'}`}
+          className={`rounded-full ${collapsed ? 'lg:hidden' : ''} ${dotOnlyActive ? 'h-2 w-2 bg-cyan-300 shadow-[0_0_9px_rgba(103,232,249,0.85)]' : 'h-1.5 w-1.5 bg-blue-500'}`}
           aria-hidden="true"
         />
       )}
@@ -343,11 +374,12 @@ type NavigationGroupProps = {
   pathname: string;
   active: boolean;
   open: boolean;
+  collapsed?: boolean;
   childDotOnly?: boolean;
   onToggle: () => void;
 };
 
-function NavigationGroup({ id, label, icon: Icon, items, pathname, active, open, childDotOnly = false, onToggle }: NavigationGroupProps) {
+function NavigationGroup({ id, label, icon: Icon, items, pathname, active, open, collapsed = false, childDotOnly = false, onToggle }: NavigationGroupProps) {
   return (
     <div>
       <button
@@ -355,7 +387,11 @@ function NavigationGroup({ id, label, icon: Icon, items, pathname, active, open,
         onClick={onToggle}
         aria-expanded={open}
         aria-controls={id}
+        aria-label={collapsed ? label : undefined}
+        title={collapsed ? label : undefined}
         className={`group flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+          collapsed ? 'lg:justify-center lg:gap-0 lg:px-1.5' : ''
+        } ${
           active
             ? 'bg-white text-blue-950 shadow-[0_10px_24px_-14px_rgba(0,0,0,0.8)]'
             : 'text-blue-100/65 hover:bg-white/[0.08] hover:text-white'
@@ -364,11 +400,11 @@ function NavigationGroup({ id, label, icon: Icon, items, pathname, active, open,
         <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${active ? 'bg-blue-100 text-blue-700' : 'bg-white/[0.06] text-blue-200/65 group-hover:bg-white/10 group-hover:text-blue-100'}`}>
           <Icon size={16} aria-hidden="true" />
         </span>
-        <span className="flex-1 text-left">{label}</span>
+        <span className={`flex-1 text-left ${collapsed ? 'lg:sr-only' : ''}`}>{label}</span>
         <FiChevronDown
           size={15}
           aria-hidden="true"
-          className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={`transition-transform duration-200 ${collapsed ? 'lg:hidden' : ''} ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -379,9 +415,9 @@ function NavigationGroup({ id, label, icon: Icon, items, pathname, active, open,
         }`}
       >
         <div className="overflow-hidden">
-          <div className="ml-5 mt-1.5 space-y-1 border-l-2 border-white/10 pl-3">
+          <div className={`ml-5 mt-1.5 space-y-1 border-l-2 border-white/10 pl-3 ${collapsed ? 'lg:ml-0 lg:border-l-0 lg:pl-0' : ''}`}>
             {items.map((item) => (
-              <NavigationLink key={item.href} item={item} pathname={pathname} nested dotOnly={childDotOnly} />
+              <NavigationLink key={item.href} item={item} pathname={pathname} nested dotOnly={childDotOnly} collapsed={collapsed} />
             ))}
           </div>
         </div>
