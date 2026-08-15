@@ -136,53 +136,53 @@ body {
   font-weight: 800;
 }
 
-/* One-step type scale increase, scoped to the new/edit entry workspace. */
+/* Larger type scale, scoped to the new/edit entry workspace. */
 .entry-page .text-xs {
-  font-size: 0.8125rem;
-  line-height: 1.125rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 .entry-page .text-sm {
-  font-size: 0.9375rem;
-  line-height: 1.375rem;
-}
-
-.entry-page .text-base {
-  font-size: 1.0625rem;
+  font-size: 1rem;
   line-height: 1.5rem;
 }
 
-.entry-page .text-lg {
-  font-size: 1.25rem;
-  line-height: 1.65rem;
+.entry-page .text-base {
+  font-size: 1.125rem;
+  line-height: 1.625rem;
 }
 
-.entry-page .text-xl {
+.entry-page .text-lg {
   font-size: 1.375rem;
   line-height: 1.75rem;
 }
 
-.entry-page .text-2xl {
-  font-size: 1.7rem;
+.entry-page .text-xl {
+  font-size: 1.5rem;
   line-height: 2rem;
 }
 
-.entry-page .text-\[5px\] { font-size: 0.4rem; line-height: 1.2; }
-.entry-page .text-\[6px\] { font-size: 0.5rem; line-height: 1.2; }
-.entry-page .text-\[8px\] { font-size: 0.6rem; line-height: 1.2; }
-.entry-page .text-\[9px\] { font-size: 0.6875rem; line-height: 1.25; }
-.entry-page .text-\[10px\] { font-size: 0.75rem; line-height: 1.3; }
-.entry-page .text-\[11px\] { font-size: 0.8125rem; line-height: 1.3; }
+.entry-page .text-2xl {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
+
+.entry-page .text-\[5px\] { font-size: 0.5rem; line-height: 1.2; }
+.entry-page .text-\[6px\] { font-size: 0.625rem; line-height: 1.2; }
+.entry-page .text-\[8px\] { font-size: 0.75rem; line-height: 1.25; }
+.entry-page .text-\[9px\] { font-size: 0.8125rem; line-height: 1.3; }
+.entry-page .text-\[10px\] { font-size: 0.875rem; line-height: 1.35; }
+.entry-page .text-\[11px\] { font-size: 0.9375rem; line-height: 1.4; }
 
 .entry-page input,
 .entry-page textarea,
 .entry-page select {
-  font-size: 1rem;
+  font-size: 1.0625rem;
 }
 
 .entry-page .entry-tally-card .font-mono {
-  font-size: 1.0625rem;
-  line-height: 1.35rem;
+  font-size: 1.125rem;
+  line-height: 1.5rem;
 }
 
 .entry-page svg {
