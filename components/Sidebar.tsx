@@ -89,12 +89,18 @@ export default function Sidebar({ role, name, permissions }: SidebarProps) {
   useEffect(() => {
     if (!mobileOpen) return;
 
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') setMobileOpen(false);
     }
 
     document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, [mobileOpen]);
 
   async function handleLogout() {
