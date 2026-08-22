@@ -203,14 +203,14 @@ export default function DashboardHome() {
   const userAccounts = accounts?.filter((account) => account.role === 'user') || [];
 
   return (
-    <div className="space-y-6 pb-4 text-slate-900">
-      <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
+    <div className="min-w-0 space-y-4 pb-4 text-slate-900 sm:space-y-6">
+      <header className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
+        <div className="min-w-0">
+          <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-600 sm:text-xs sm:tracking-[0.18em]">
             <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]" />
             {ROLE_LABELS[role] || ROLE_LABELS.user}
           </div>
-          <h1 className="font-display text-3xl font-bold tracking-tight text-blue-950 sm:text-4xl">
+          <h1 className="font-display text-[1.75rem] font-bold leading-tight tracking-tight text-blue-950 sm:text-4xl">
             Project dashboard
           </h1>
           <p className="mt-2 text-sm font-medium text-slate-500">
@@ -220,7 +220,7 @@ export default function DashboardHome() {
 
         <Link
           href={canCreate ? '/dashboard/entry/new' : reportHref}
-          className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-xl bg-blue-950 px-4 text-sm font-bold text-white shadow-[0_10px_24px_-12px_rgba(7,39,71,0.8)] transition hover:-translate-y-0.5 hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 sm:self-auto"
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-950 px-4 text-sm font-bold text-white shadow-[0_10px_24px_-12px_rgba(7,39,71,0.8)] transition hover:-translate-y-0.5 hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 sm:w-auto sm:self-auto"
         >
           {canCreate ? <FiPlus size={17} /> : <FiBarChart2 size={17} />}
           {canCreate ? 'New project' : 'Open reports'}
@@ -270,7 +270,7 @@ export default function DashboardHome() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)]">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_16px_45px_-32px_rgba(15,23,42,0.3)] sm:p-6">
+        <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_16px_45px_-32px_rgba(15,23,42,0.3)] sm:p-6">
           <SectionHeading
             eyebrow="Performance"
             title="Project activity"
@@ -280,7 +280,7 @@ export default function DashboardHome() {
           <ActivityChart data={dashboard.months} loading={loading} />
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-blue-950 p-5 text-white shadow-[0_22px_50px_-30px_rgba(7,39,71,0.8)] sm:p-6">
+        <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-blue-950 p-4 text-white shadow-[0_22px_50px_-30px_rgba(7,39,71,0.8)] sm:p-6">
           <SectionHeading
             eyebrow="Portfolio"
             title="Workflow split"
@@ -293,7 +293,7 @@ export default function DashboardHome() {
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,0.85fr)]">
         <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_16px_45px_-32px_rgba(15,23,42,0.3)]">
-          <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-6">
+          <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:items-center sm:gap-4 sm:px-6 sm:py-5">
             <SectionHeading eyebrow="Projects" title="Recent projects" detail="Latest updates across your workspace" compact />
             <Link href={reportHref} className="group inline-flex shrink-0 items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-950">
               View all
@@ -309,14 +309,14 @@ export default function DashboardHome() {
                 const status = getStatus(project);
                 const progress = getProgress(project, status);
                 return (
-                  <div key={project._id} className="group grid gap-4 px-5 py-4 transition hover:bg-slate-50/70 sm:grid-cols-[minmax(0,1.3fr)_140px_112px] sm:items-center sm:px-6">
+                  <div key={project._id} className="group grid min-w-0 gap-3 px-4 py-4 transition hover:bg-slate-50/70 sm:grid-cols-[minmax(0,1.3fr)_140px_112px] sm:items-center sm:gap-4 sm:px-6">
                     <div className="flex min-w-0 items-center gap-3.5">
                       <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${index % 3 === 0 ? 'bg-blue-100 text-blue-700' : index % 3 === 1 ? 'bg-violet-100 text-violet-700' : 'bg-amber-100 text-amber-700'}`}>
                         {project.name.trim().charAt(0).toUpperCase() || 'P'}
                       </span>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold text-slate-900">{project.name || 'Untitled project'}</p>
-                        <p className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                        <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-semibold text-slate-400">
                           <FiCalendar size={12} /> {formatProjectDate(project.date)}
                           {project.teamName && <><span>•</span><span className="truncate">{project.teamName}</span></>}
                         </p>
@@ -347,7 +347,7 @@ export default function DashboardHome() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_16px_45px_-32px_rgba(15,23,42,0.3)] sm:p-6">
+        <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_16px_45px_-32px_rgba(15,23,42,0.3)] sm:p-6">
           <SectionHeading eyebrow="Resources" title="Workload overview" detail="Projects grouped by team or owner" />
           <WorkloadList teams={dashboard.teams} total={entries.length} loading={loading} />
 
@@ -381,9 +381,9 @@ function MetricCard({ icon: Icon, label, value, detail, tone }: { icon: IconType
     amber: 'bg-amber-50 text-amber-700 ring-amber-100',
   };
   return (
-    <article className="group rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.4)] transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_18px_36px_-24px_rgba(0,107,196,0.24)] sm:p-5">
+    <article className="group min-w-0 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.4)] transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_18px_36px_-24px_rgba(0,107,196,0.24)] sm:p-5">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">{label}</p>
           <p className="mt-2 font-display text-2xl font-bold tabular-nums text-blue-950">{value}</p>
         </div>
@@ -391,20 +391,20 @@ function MetricCard({ icon: Icon, label, value, detail, tone }: { icon: IconType
           <Icon size={18} />
         </span>
       </div>
-      <p className="mt-3 truncate text-[11px] font-semibold text-slate-400">{detail}</p>
+      <p className="mt-3 text-[11px] font-semibold leading-4 text-slate-400 sm:truncate">{detail}</p>
     </article>
   );
 }
 
 function SectionHeading({ eyebrow, title, detail, action, dark = false, compact = false }: { eyebrow: string; title: string; detail: string; action?: React.ReactNode; dark?: boolean; compact?: boolean }) {
   return (
-    <div className={`flex items-start justify-between gap-4 ${compact ? '' : 'mb-5'}`}>
-      <div>
+    <div className={`flex min-w-0 items-start justify-between gap-3 sm:gap-4 ${compact ? '' : 'mb-4 sm:mb-5'}`}>
+      <div className="min-w-0">
         <p className={`text-[10px] font-extrabold uppercase tracking-[0.18em] ${dark ? 'text-blue-300' : 'text-blue-600'}`}>{eyebrow}</p>
         <h2 className={`mt-1 font-display font-bold ${compact ? 'text-lg' : 'text-xl'} ${dark ? 'text-white' : 'text-blue-950'}`}>{title}</h2>
         <p className={`mt-1 text-[11px] font-medium ${dark ? 'text-blue-200/60' : 'text-slate-400'}`}>{detail}</p>
       </div>
-      {action}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }
@@ -423,11 +423,11 @@ function ActivityChart({ data, loading }: { data: Array<{ key: string; label: st
   const line = points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ');
   const area = `${line} L ${points.at(-1)?.x || 0} ${height - padding.bottom} L ${points[0]?.x || 0} ${height - padding.bottom} Z`;
 
-  if (loading) return <div className="h-[220px] animate-pulse rounded-xl bg-slate-50" />;
+  if (loading) return <div className="h-[180px] animate-pulse rounded-xl bg-slate-50 sm:h-[220px]" />;
 
   return (
-    <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Project activity line chart" className="h-[220px] min-w-[560px] w-full">
+    <div className="min-w-0 overflow-hidden">
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label="Project activity line chart" className="h-[180px] w-full sm:h-[220px]">
         <defs>
           <linearGradient id="activity-area" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="#1689dc" stopOpacity="0.23" />
@@ -465,11 +465,11 @@ function StatusChart({ statuses, total, loading }: { statuses: Record<ProjectSta
 
   return (
     <div>
-      <div className="relative mx-auto flex h-40 w-40 items-center justify-center">
+      <div className="relative mx-auto flex h-36 w-36 items-center justify-center sm:h-40 sm:w-40">
         {loading ? (
           <div className="h-32 w-32 animate-pulse rounded-full border-[14px] border-white/10" />
         ) : (
-          <svg viewBox="0 0 42 42" className="h-40 w-40 -rotate-90" role="img" aria-label="Project workflow distribution chart">
+          <svg viewBox="0 0 42 42" className="h-36 w-36 -rotate-90 sm:h-40 sm:w-40" role="img" aria-label="Project workflow distribution chart">
             <circle cx="21" cy="21" r="15.915" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="5" />
             {segments.map((segment) => (
               <circle

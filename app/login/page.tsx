@@ -184,7 +184,7 @@ export default function LoginPage() {
   const content = STAGE_CONTENT[stage];
 
   return (
-    <main className="fixed inset-0 flex items-center justify-center overflow-hidden bg-[#041c33] p-3 sm:p-6">
+    <main className="login-page fixed inset-0 flex items-center justify-center overflow-hidden bg-[#041c33] p-3 sm:p-6">
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(74,169,244,0.55),transparent_38%),radial-gradient(circle_at_8%_90%,rgba(0,107,196,0.3),transparent_30%),linear-gradient(145deg,#03172a_0%,#07365e_52%,#075387_100%)]" />
         <div className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(rgba(255,255,255,0.7)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.7)_1px,transparent_1px)] [background-size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]" />
