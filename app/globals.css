@@ -228,6 +228,12 @@ body {
   line-height: 1.5rem;
 }
 
+@media (max-width: 639px) {
+  .entry-page .entry-tally-card .font-mono {
+    font-weight: 900;
+  }
+}
+
 .entry-page svg {
   scale: 1.3;
   stroke-width: 2.35;
