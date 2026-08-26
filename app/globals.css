@@ -229,8 +229,10 @@ body {
 }
 
 @media (max-width: 639px) {
-  .entry-page .entry-tally-card .font-mono {
+  .entry-page .entry-number-value {
     font-weight: 900;
+    font-synthesis: weight;
+    -webkit-text-stroke: 0.15px currentColor;
   }
 }
 
