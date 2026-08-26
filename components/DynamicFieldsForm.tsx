@@ -280,7 +280,7 @@ export function FinalTotalCard({
         <div className={`flex min-w-[5rem] shrink-0 items-center justify-end rounded-xl border border-blue-100 bg-white px-3 py-2 ${single ? 'xl:col-start-3' : ''
           }`}>
           <span
-            className={`font-mono text-2xl font-semibold tracking-tight tabular ${finalTotal < 0 ? 'text-red-600' : finalTotal > 0 ? 'text-blue-950' : 'text-blue-950'
+            className={`entry-number-value font-mono text-2xl font-semibold tracking-tight tabular ${finalTotal < 0 ? 'text-red-600' : finalTotal > 0 ? 'text-blue-950' : 'text-blue-950'
               }`}
           >
             {finalTotal}

@@ -41,7 +41,7 @@ export default function TotalPill({
         </span>
       )}
       <span
-        className={`rounded-lg px-2 py-1 text-center font-mono text-xs font-semibold tabular shadow-sm ${signStyle || defaultStyle}`}
+        className={`entry-number-value rounded-lg px-2 py-1 text-center font-mono text-xs font-semibold tabular shadow-sm ${signStyle || defaultStyle}`}
       >
         {value}
       </span>
