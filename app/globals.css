@@ -228,22 +228,22 @@ body {
   line-height: 1.5rem;
 }
 
-/* Keep box totals and entered numeric values strong at every viewport size. */
+/* Keep box totals and entered numeric values semibold at every viewport size. */
 .entry-page .entry-number-value,
 .entry-page .entry-tally-card .entry-number-value,
 .entry-page [role='dialog'] .entry-number-value {
-  font-weight: 800;
+  font-weight: 600;
   font-synthesis: weight;
 }
 
-/* Android's fallback monospace face can rasterize heavy weights too lightly. */
+/* Android's fallback monospace face often has no real semibold face. */
 @media (max-width: 639px) {
   .entry-page .entry-number-value,
   .entry-page .entry-tally-card .entry-number-value,
   .entry-page [role='dialog'] .entry-number-value {
-    font-weight: 900;
-    -webkit-text-stroke: 0.2px currentColor;
-    paint-order: stroke fill;
+    font-family: Roboto, 'Segoe UI', Arial, sans-serif;
+    font-weight: 600;
+    -webkit-text-stroke: 0;
   }
 }
 
