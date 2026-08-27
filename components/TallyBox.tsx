@@ -213,7 +213,7 @@ function LegacyTallyBox({
           <span className="truncate text-[9px] font-semibold uppercase tracking-wider text-black">{title}</span>
         </span>
         <span
-          className={`entry-number-value mt-1 block font-mono text-sm font-bold tabular-nums ${
+          className={`entry-number-value mt-1 block font-mono text-sm font-semibold tabular-nums ${
             colorHex ? '' : value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-950'
           }`}
           style={colorHex ? { color: colorHex } : undefined}
@@ -669,7 +669,7 @@ function GroupedCustomTallyBox({
           <span className="truncate text-[9px] font-semibold uppercase tracking-wider text-black">{title}</span>
         </span>
         <span
-          className={`entry-number-value mt-1 block font-mono text-base font-bold tabular-nums ${
+          className={`entry-number-value mt-1 block font-mono text-base font-semibold tabular-nums ${
             colorHex ? '' : value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-950'
           }`}
           style={colorHex ? { color: colorHex } : undefined}
@@ -793,13 +793,13 @@ function GroupedCustomTallyBox({
                                 {displayFields.map((field) => (
                                   <td key={field.label} className="px-1">
                                     {field.auto === 'serial' ? (
-                                      <span className="entry-number-value flex h-7 min-w-[2rem] items-center justify-center rounded-lg bg-blue-50/80 px-1.5 font-mono text-xs text-black">
+                                      <span className="entry-number-value flex h-7 min-w-[2rem] items-center justify-center rounded-lg bg-blue-50/80 px-1.5 font-mono text-xs font-semibold text-black">
                                         {rowIndex + 1}
                                       </span>
                                     ) : field.auto === 'constant' || field.type === 'computed' || isCryptoTotalField(field, fields) ? (
                                       <span
                                         aria-label={`Row ${rowIndex + 1} ${field.label}`}
-                                        className="entry-number-value flex h-7 min-w-[5rem] items-center justify-end rounded-lg bg-blue-50/80 px-2 font-mono text-xs text-black"
+                                        className="entry-number-value flex h-7 min-w-[5rem] items-center justify-end rounded-lg bg-blue-50/80 px-2 font-mono text-xs font-semibold text-black"
                                       >
                                         {Number(row[field.label]) || 0}
                                       </span>
@@ -1022,7 +1022,7 @@ function FlatCustomTallyBox({
           <span className="truncate text-[9px] font-semibold uppercase tracking-wider text-black">{title}</span>
         </span>
         <span
-          className={`entry-number-value mt-1 block font-mono text-sm font-bold tabular-nums ${
+          className={`entry-number-value mt-1 block font-mono text-sm font-semibold tabular-nums ${
             colorHex ? '' : value > 0 ? 'text-emerald-600' : value < 0 ? 'text-red-600' : 'text-blue-950'
           }`}
           style={colorHex ? { color: colorHex } : undefined}
@@ -1089,13 +1089,13 @@ function FlatCustomTallyBox({
                       {displayFields.map((field) => (
                         <td key={field.label} className="px-1">
                           {field.auto === 'serial' ? (
-                            <span className="entry-number-value flex h-7 min-w-[2rem] items-center justify-center rounded-lg bg-blue-50/60 px-1.5 font-mono text-xs text-black">
+                            <span className="entry-number-value flex h-7 min-w-[2rem] items-center justify-center rounded-lg bg-blue-50/60 px-1.5 font-mono text-xs font-semibold text-black">
                               {rowIndex + 1}
                             </span>
                           ) : field.auto === 'constant' || field.type === 'computed' || isCryptoTotalField(field, fields) ? (
                             <span
                               aria-label={`Row ${rowIndex + 1} ${field.label}`}
-                              className="entry-number-value flex h-7 min-w-[5rem] items-center justify-end rounded-lg bg-blue-50/60 px-2 font-mono text-xs text-black"
+                              className="entry-number-value flex h-7 min-w-[5rem] items-center justify-end rounded-lg bg-blue-50/60 px-2 font-mono text-xs font-semibold text-black"
                             >
                               {Number(row[field.label]) || 0}
                             </span>
@@ -1253,7 +1253,7 @@ function SignedNumberInput({ value, onChange, label, readOnly }: { value: number
       }}
       placeholder="0"
       aria-label={label}
-      className={`entry-number-value w-full min-w-0 rounded-lg border border-blue-100 px-2 py-1.5 text-right font-mono text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${readOnly ? 'bg-blue-50/70 text-black cursor-default' : 'bg-blue-50/40'}`}
+      className={`entry-number-value w-full min-w-0 rounded-lg border border-blue-100 px-2 py-1.5 text-right font-mono text-xs font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 ${readOnly ? 'bg-blue-50/70 text-black cursor-default' : 'bg-blue-50/40'}`}
     />
   );
 }
