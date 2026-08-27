@@ -230,9 +230,8 @@ body {
 
 /* Keep box totals and entered numeric values semibold at every viewport size. */
 .entry-page .entry-number-value,
-.entry-page .entry-tally-card .entry-number-value,
-.entry-page [role='dialog'] .entry-number-value {
-  font-weight: 600;
+.entry-page .entry-tally-card .entry-number-value {
+  font-weight: 800;
 }
 
 .entry-page svg {
