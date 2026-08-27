@@ -228,12 +228,10 @@ body {
   line-height: 1.5rem;
 }
 
-@media (max-width: 639px) {
-  .entry-page .entry-number-value {
-    font-weight: 900;
-    font-synthesis: weight;
-    -webkit-text-stroke: 0.15px currentColor;
-  }
+/* Keep box totals and entered numeric values semibold at every viewport size. */
+.entry-page .entry-number-value,
+.entry-page .entry-tally-card .entry-number-value {
+  font-weight: 600;
 }
 
 .entry-page svg {
