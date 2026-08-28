@@ -143,42 +143,6 @@ body {
   font-weight: 800;
 }
 
-/* Keep every login stage strong and readable on laptop and mobile. */
-.login-page {
-  font-weight: 700;
-  font-synthesis: weight;
-}
-
-.login-page .font-normal {
-  font-weight: 600;
-}
-
-.login-page .font-medium {
-  font-weight: 700;
-}
-
-.login-page .font-semibold {
-  font-weight: 800;
-}
-
-.login-page .font-bold,
-.login-page .font-extrabold {
-  font-weight: 900;
-}
-
-.login-page input,
-.login-page textarea,
-.login-page select,
-.login-page button {
-  font-family: inherit;
-  font-weight: 700;
-}
-
-.login-page input::placeholder,
-.login-page textarea::placeholder {
-  font-weight: 600;
-}
-
 /* Larger type scale, scoped to the new/edit entry workspace. */
 .entry-page .text-xs {
   font-size: 0.875rem;
@@ -238,6 +202,15 @@ body {
 
 /* Android's fallback monospace face often has no real semibold face. */
 @media (max-width: 639px) {
+  /* Mobile monospace fallbacks may ignore bold weights, so date/time values use
+     a reliable UI face while keeping the desktop monospace treatment. */
+  .entry-page .entry-date-time {
+    font-family: Roboto, 'Segoe UI', Arial, sans-serif;
+    font-weight: 700;
+    font-synthesis: weight;
+    -webkit-text-stroke: 0;
+  }
+
   .entry-page .entry-number-value,
   .entry-page .entry-tally-card .entry-number-value,
   .entry-page [role='dialog'] .entry-number-value {

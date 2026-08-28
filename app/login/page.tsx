@@ -27,7 +27,6 @@ type MfaChallenge = {
   qrCodeDataUrl?: string;
   manualKey?: string;
   issuer?: string;
-  accountLabel?: string;
 };
 
 type LoginResponse = MfaChallenge | { mfaRequired: false };
@@ -65,7 +64,7 @@ export default function LoginPage() {
   }, []);
 
   function clearError() {
-    if (errorMessage) setErrorMessage('');
+    setErrorMessage('');
   }
 
   function updateIdentifier(value: string) {
@@ -125,12 +124,13 @@ export default function LoginPage() {
 
   async function handleMfa(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!challenge || code.trim().length < 6) return;
+    const normalizedCode = code.trim();
+    if (!challenge || normalizedCode.length < 6) return;
 
     setErrorMessage('');
     setLoading(true);
     try {
-      const response = await api.verifyMfa(challenge.challengeToken, code);
+      const response = await api.verifyMfa(challenge.challengeToken, normalizedCode);
       const newRecoveryCodes = Array.isArray(response.recoveryCodes)
         ? response.recoveryCodes.filter(
           (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0,
@@ -184,7 +184,7 @@ export default function LoginPage() {
   const content = STAGE_CONTENT[stage];
 
   return (
-    <main className="login-page fixed inset-0 flex items-center justify-center overflow-hidden bg-[#041c33] p-3 sm:p-6">
+    <main className="fixed inset-0 flex items-center justify-center overflow-hidden bg-[#041c33] p-3 font-body font-normal sm:p-6">
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(74,169,244,0.55),transparent_38%),radial-gradient(circle_at_8%_90%,rgba(0,107,196,0.3),transparent_30%),linear-gradient(145deg,#03172a_0%,#07365e_52%,#075387_100%)]" />
         <div className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(rgba(255,255,255,0.7)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.7)_1px,transparent_1px)] [background-size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]" />
@@ -213,8 +213,8 @@ export default function LoginPage() {
                   />
                 </div>
                 <div>
-                  <p className="font-display text-lg font-bold leading-tight tracking-tight text-blue-950">Beone Production</p>
-                  <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
+                  <p className="text-lg font-semibold leading-tight text-blue-950">Beone Production</p>
+                  <p className="mt-0.5 text-xs font-normal text-slate-500">
                     Operations workspace
                   </p>
                 </div>
@@ -226,30 +226,29 @@ export default function LoginPage() {
             </div>
 
             <header className="mb-5">
-              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-blue-600">
+              <p className="mb-1.5 text-xs font-medium text-blue-600">
                 {content.eyebrow}
               </p>
-              <h1
-                className={`text-2xl leading-tight tracking-[-0.035em] text-blue-950 sm:text-[1.7rem] ${stage === 'credentials' ? 'font-body font-semibold' : 'font-display font-bold'
-                  }`}
-              >
+              <h1 className="text-2xl font-semibold leading-tight text-blue-950 sm:text-[1.7rem]">
                 {content.title}
               </h1>
-              {stage !== 'credentials' && <p className="mt-2 text-xs leading-5 text-slate-500 sm:text-sm">
-                {stage === 'mfa' &&
-                  (challenge?.setupRequired
-                    ? mfaView === 'enroll'
-                      ? 'Scan the QR code with your authenticator app, then continue.'
-                      : 'Enter the 6-digit code shown in your authenticator app.'
-                    : 'Enter your authenticator code or an unused recovery code.')}
-                {stage === 'recovery' && 'Keep these one-time codes somewhere safe.'}
-              </p>}
+              {stage !== 'credentials' && (
+                <p className="mt-2 text-sm leading-5 text-slate-500">
+                  {stage === 'mfa' &&
+                    (challenge?.setupRequired
+                      ? mfaView === 'enroll'
+                        ? 'Scan the QR code with your authenticator app, then continue.'
+                        : 'Enter the 6-digit code shown in your authenticator app.'
+                      : 'Enter your authenticator code or an unused recovery code.')}
+                  {stage === 'recovery' && 'Keep these one-time codes somewhere safe.'}
+                </p>
+              )}
             </header>
 
             {errorMessage && (
               <div
                 role="alert"
-                className="mb-4 flex gap-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs leading-5 text-red-800"
+                className="mb-4 flex gap-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm leading-5 text-red-800"
               >
                 <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-red-500" />
                 {errorMessage}
@@ -301,7 +300,7 @@ export default function LoginPage() {
             )}
 
             {stage === 'credentials' && (
-              <p className="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
+              <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-slate-500">
                 <FiLock size={12} aria-hidden="true" />
                 Your sign-in is private and protected
               </p>
@@ -309,7 +308,6 @@ export default function LoginPage() {
           </div>
         </section>
       </div>
-
     </main>
   );
 }
@@ -348,6 +346,7 @@ function CredentialsForm({
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}
+          autoFocus
           disabled={loading}
           onChange={(event) => onIdentifierChange(event.target.value)}
           placeholder="name@company.com"
@@ -423,8 +422,8 @@ function MfaForm({
               <FiSmartphone size={15} aria-hidden="true" />
             </span>
             <div>
-              <p className="font-display text-xs font-bold text-blue-950">Set up your authenticator</p>
-              <p className="mt-0.5 text-[11px] leading-4 text-slate-600">
+              <p className="text-sm font-medium text-blue-950">Set up your authenticator</p>
+              <p className="mt-0.5 text-xs leading-5 text-slate-600">
                 Scan with Google Authenticator, Microsoft Authenticator, or a compatible app.
               </p>
             </div>
@@ -442,17 +441,17 @@ function MfaForm({
               />
             </div>
           ) : (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
               QR code unavailable. Add the setup key below to your authenticator app manually.
             </div>
           )}
 
           {challenge.manualKey && (
             <div className="mt-2.5">
-              <p className="mb-1 text-center text-[9px] font-semibold uppercase tracking-wider text-slate-500">
+              <p className="mb-1 text-center text-xs font-normal text-slate-500">
                 Manual setup key
               </p>
-              <code className="block select-all break-all rounded-lg border border-blue-100 bg-white px-3 py-2 text-center font-mono text-[10px] font-bold tracking-[0.1em] text-blue-950">
+              <code className="block select-all break-all rounded-lg border border-blue-100 bg-white px-3 py-2 text-center font-mono text-xs font-medium tracking-wide text-blue-950">
                 {challenge.manualKey}
               </code>
             </div>
@@ -462,7 +461,7 @@ function MfaForm({
         <button
           type="button"
           onClick={onContinueFromQr}
-          className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-5 py-3 text-sm font-bold text-white shadow-[0_12px_24px_-12px_rgba(0,87,162,0.75)] transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25 active:translate-y-0"
+          className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-5 py-3 text-sm font-medium text-white shadow-[0_12px_24px_-12px_rgba(0,87,162,0.75)] transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25 active:translate-y-0 motion-reduce:transform-none"
         >
           I&apos;ve scanned the QR code
           <FiArrowRight className="transition-transform group-hover:translate-x-0.5" size={16} aria-hidden="true" />
@@ -471,7 +470,7 @@ function MfaForm({
         <button
           type="button"
           onClick={onBack}
-          className="mx-auto flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="mx-auto flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-normal text-slate-600 transition hover:bg-slate-50 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <FiArrowLeft size={15} aria-hidden="true" />
           Back to password
@@ -504,7 +503,7 @@ function MfaForm({
           }
           placeholder={isSetup ? '000000' : 'Enter code'}
           aria-describedby={!isSetup ? 'verification-code-hint' : undefined}
-          className={`h-[3.25rem] w-full rounded-xl border border-slate-200 bg-slate-50/80 py-3.5 pl-11 pr-4 font-mono font-bold text-blue-950 outline-none transition placeholder:font-body placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-400 hover:border-blue-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-60 ${isSetup ? 'text-lg tracking-[0.24em]' : 'text-sm tracking-wider'}`}
+          className={`h-[3.25rem] w-full rounded-xl border border-slate-200 bg-slate-50/80 py-3.5 pl-11 pr-4 font-mono font-medium text-blue-950 outline-none transition placeholder:font-body placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-400 hover:border-blue-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-60 ${isSetup ? 'text-lg tracking-[0.2em]' : 'text-sm tracking-wide'}`}
         />
       </Field>
 
@@ -518,7 +517,7 @@ function MfaForm({
             type="button"
             onClick={onReturnToQr}
             disabled={loading}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-normal text-slate-600 transition hover:bg-slate-50 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <FiArrowLeft size={14} aria-hidden="true" />
             Back to QR code
@@ -529,7 +528,7 @@ function MfaForm({
             type="button"
             onClick={onBack}
             disabled={loading}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-normal text-slate-600 transition hover:bg-slate-50 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <FiArrowLeft size={14} aria-hidden="true" />
             Back to password
@@ -553,8 +552,8 @@ function RecoveryCodes({ recoveryCodes, copyStatus, onCopy, onContinue }: Recove
       <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5">
         <FiShield className="mt-0.5 shrink-0 text-amber-700" size={18} aria-hidden="true" />
         <div>
-          <p className="font-display text-xs font-bold text-amber-950">These codes are shown only once</p>
-          <p className="mt-0.5 text-[11px] leading-4 text-amber-900">
+          <p className="text-sm font-medium text-amber-950">These codes are shown only once</p>
+          <p className="mt-0.5 text-xs leading-5 text-amber-900">
             Each code can be used one time if you lose access to your authenticator.
           </p>
         </div>
@@ -564,7 +563,7 @@ function RecoveryCodes({ recoveryCodes, copyStatus, onCopy, onContinue }: Recove
         {recoveryCodes.map((recoveryCode, index) => (
           <code
             key={`${recoveryCode}-${index}`}
-            className="select-all rounded-lg border border-slate-100 bg-white px-2 py-1.5 text-center font-mono text-[10px] font-bold tracking-wider text-blue-950 shadow-sm sm:text-[11px]"
+            className="select-all rounded-lg border border-slate-100 bg-white px-2 py-1.5 text-center font-mono text-xs font-medium tracking-wide text-blue-950 shadow-sm"
           >
             {recoveryCode}
           </code>
@@ -580,7 +579,7 @@ function RecoveryCodes({ recoveryCodes, copyStatus, onCopy, onContinue }: Recove
         <button
           type="button"
           onClick={onCopy}
-          className={`flex w-full items-center justify-center gap-2 rounded-xl border px-5 py-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/15 ${copyStatus === 'copied'
+          className={`flex w-full items-center justify-center gap-2 rounded-xl border px-5 py-3 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/15 ${copyStatus === 'copied'
               ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
               : copyStatus === 'failed'
                 ? 'border-red-200 bg-red-50 text-red-800'
@@ -598,7 +597,7 @@ function RecoveryCodes({ recoveryCodes, copyStatus, onCopy, onContinue }: Recove
         <button
           type="button"
           onClick={onContinue}
-          className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-5 py-3 text-xs font-bold text-white shadow-[0_12px_24px_-12px_rgba(0,87,162,0.75)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_-12px_rgba(0,87,162,0.8)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25 active:translate-y-0"
+          className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-5 py-3 text-sm font-medium text-white shadow-[0_12px_24px_-12px_rgba(0,87,162,0.75)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_-12px_rgba(0,87,162,0.8)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25 active:translate-y-0 motion-reduce:transform-none"
         >
           I saved my codes
           <FiArrowRight className="transition-transform group-hover:translate-x-0.5" size={16} aria-hidden="true" />
@@ -625,7 +624,7 @@ function Field({
     <div>
       <label
         htmlFor={htmlFor}
-        className={`mb-1.5 block font-semibold text-blue-950 ${labelSize === 'large' ? 'text-sm' : 'text-xs'}`}
+        className={`mb-1.5 block font-medium text-blue-950 ${labelSize === 'large' ? 'text-sm' : 'text-xs'}`}
       >
         {label}
       </label>
@@ -654,7 +653,7 @@ function PrimaryButton({
     <button
       type="submit"
       disabled={loading || disabled}
-      className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-5 py-3 text-sm font-bold text-white shadow-[0_12px_24px_-12px_rgba(0,87,162,0.75)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_-12px_rgba(0,87,162,0.8)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25 active:translate-y-0 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60"
+      className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-5 py-3 text-sm font-medium text-white shadow-[0_12px_24px_-12px_rgba(0,87,162,0.75)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_-12px_rgba(0,87,162,0.8)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25 active:translate-y-0 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60 motion-reduce:transform-none"
     >
       {loading ? (
         <>
