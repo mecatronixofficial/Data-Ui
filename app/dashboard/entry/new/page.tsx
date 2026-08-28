@@ -59,11 +59,14 @@ function CurrentDateTime() {
       </span>
       <span className="min-w-0">
         <span className="block text-[8px] font-extrabold uppercase tracking-[0.15em] text-slate-400">Current date &amp; time</span>
-        <span className="mt-0.5 block whitespace-nowrap font-mono text-[10px] font-bold text-blue-950">
+        <time
+          className="entry-date-time mt-0.5 block whitespace-nowrap font-mono text-[10px] font-bold text-blue-950"
+          dateTime={now?.toISOString()}
+        >
           {now
             ? `${now.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })} · ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
             : 'Loading time…'}
-        </span>
+        </time>
       </span>
     </div>
   );
@@ -524,11 +527,17 @@ export default function NewEntryPage() {
                 Updated
               </span>
               {lastUpdatedDateTime ? (
-                <span className="mt-0.5 block whitespace-nowrap font-mono font-bold leading-tight">
-                  <span className="block text-[10px] text-blue-950 flex flex-row items-center gap-1">
-                    {lastUpdatedDateTime.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}  <span className="mt-0.5 block text-[9px] text-slate-500">{lastUpdatedDateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <time
+                  className="entry-date-time mt-0.5 block whitespace-nowrap font-mono font-bold leading-tight"
+                  dateTime={lastUpdatedDateTime.toISOString()}
+                >
+                  <span className="flex flex-row items-center gap-1 text-[10px] text-blue-950">
+                    {lastUpdatedDateTime.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}
+                    <span className="text-[9px] text-slate-500">
+                      {lastUpdatedDateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </span>
-                </span>
+                </time>
               ) : (
                 <span className="mt-1 block whitespace-nowrap text-[9px] font-bold leading-tight text-slate-400">Not saved yet</span>
               )}
