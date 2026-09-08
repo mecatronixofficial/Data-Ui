@@ -1,13 +1,15 @@
 'use client';
 
 import { Fragment, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { FiChevronDown, FiChevronRight, FiEdit2, FiKey, FiPower, FiShieldOff, FiTrash2, FiUserPlus, FiUsers } from 'react-icons/fi';
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
-import EditAccountModal from '@/components/EditAccountModal';
-import ResetPasswordModal from '@/components/ResetPasswordModal';
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
+
+const EditAccountModal = dynamic(() => import('@/components/EditAccountModal'));
+const ResetPasswordModal = dynamic(() => import('@/components/ResetPasswordModal'));
+const ConfirmDeleteModal = dynamic(() => import('@/components/ConfirmDeleteModal'));
 
 type AdminRow = { _id: string; userId?: string; name: string; email: string; role: string; teamName?: string; assignedAdminId?: string | null; isActive?: boolean; mfaEnabled?: boolean };
 

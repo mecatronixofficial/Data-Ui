@@ -15,6 +15,17 @@ body {
   font-synthesis: weight;
 }
 
+/* Keep every word and number bold across all application screens. */
+:where(body, body *) {
+  font-weight: 700 !important;
+  font-synthesis: weight;
+}
+
+input::placeholder,
+textarea::placeholder {
+  font-weight: 700 !important;
+}
+
 .tabular {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
@@ -35,6 +46,7 @@ body {
     transform: translate3d(1.5rem, -0.2rem, 0) scale(0.96);
     filter: blur(3px);
   }
+
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1);
@@ -43,8 +55,13 @@ body {
 }
 
 @keyframes toast-progress {
-  from { transform: scaleX(1); }
-  to { transform: scaleX(0); }
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
 }
 
 @keyframes entry-flip-up {
@@ -52,10 +69,12 @@ body {
     opacity: 0;
     transform: translateY(70%) rotateX(-55deg);
   }
+
   65% {
     opacity: 1;
     transform: translateY(-8%) rotateX(8deg);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) rotateX(0);
@@ -63,14 +82,31 @@ body {
 }
 
 @keyframes workspace-progress {
-  0% { transform: translateX(-110%); }
-  50% { transform: translateX(90%); }
-  100% { transform: translateX(250%); }
+  0% {
+    transform: translateX(-110%);
+  }
+
+  50% {
+    transform: translateX(90%);
+  }
+
+  100% {
+    transform: translateX(250%);
+  }
 }
 
 @keyframes project-bar {
-  0%, 100% { transform: scaleY(0.55); opacity: 0.55; }
-  50% { transform: scaleY(1); opacity: 1; }
+
+  0%,
+  100% {
+    transform: scaleY(0.55);
+    opacity: 0.55;
+  }
+
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
 }
 
 .animate-toast-in {
@@ -174,12 +210,35 @@ body {
   line-height: 2.25rem;
 }
 
-.entry-page .text-\[5px\] { font-size: 0.5rem; line-height: 1.2; }
-.entry-page .text-\[6px\] { font-size: 0.625rem; line-height: 1.2; }
-.entry-page .text-\[8px\] { font-size: 0.75rem; line-height: 1.25; }
-.entry-page .text-\[9px\] { font-size: 0.8125rem; line-height: 1.3; }
-.entry-page .text-\[10px\] { font-size: 0.875rem; line-height: 1.35; }
-.entry-page .text-\[11px\] { font-size: 0.9375rem; line-height: 1.4; }
+.entry-page .text-\[5px\] {
+  font-size: 0.5rem;
+  line-height: 1.2;
+}
+
+.entry-page .text-\[6px\] {
+  font-size: 0.625rem;
+  line-height: 1.2;
+}
+
+.entry-page .text-\[8px\] {
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.entry-page .text-\[9px\] {
+  font-size: 0.8125rem;
+  line-height: 1.3;
+}
+
+.entry-page .text-\[10px\] {
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.entry-page .text-\[11px\] {
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
 
 .entry-page input,
 .entry-page textarea,
@@ -200,24 +259,19 @@ body {
   font-synthesis: weight;
 }
 
-/* Android's fallback monospace face often has no real semibold face. */
-@media (max-width: 639px) {
-  /* Mobile monospace fallbacks may ignore bold weights, so date/time values use
-     a reliable UI face while keeping the desktop monospace treatment. */
-  .entry-page .entry-date-time {
-    font-family: Roboto, 'Segoe UI', Arial, sans-serif;
-    font-weight: 700;
-    font-synthesis: weight;
-    -webkit-text-stroke: 0;
-  }
+.entry-page .entry-date-time {
+  font-family: Roboto, 'Segoe UI', Arial, sans-serif;
+  font-weight: 700;
+  font-synthesis: weight;
+  -webkit-text-stroke: 0;
+}
 
-  .entry-page .entry-number-value,
-  .entry-page .entry-tally-card .entry-number-value,
-  .entry-page [role='dialog'] .entry-number-value {
-    font-family: Roboto, 'Segoe UI', Arial, sans-serif;
-    font-weight: 600;
-    -webkit-text-stroke: 0;
-  }
+.entry-page .entry-number-value,
+.entry-page .entry-tally-card .entry-number-value,
+.entry-page [role='dialog'] .entry-number-value {
+  font-family: Roboto, 'Segoe UI', Arial, sans-serif;
+  font-weight: 600;
+  -webkit-text-stroke: 0;
 }
 
 .entry-page svg {
@@ -299,6 +353,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .animate-toast-in,
   .animate-toast-progress,
   .entry-flip-up {
