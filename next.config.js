@@ -4,6 +4,15 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   productionBrowserSourceMaps: false,
+  // Keep icon imports granular in both development and production builds.
+  // This avoids compiling the full react-icons entry point for every route.
+  experimental: {
+    optimizePackageImports: ['react-icons'],
+  },
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+  },
   async rewrites() {
     const configured = process.env.API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:4000');
     if (!configured) {

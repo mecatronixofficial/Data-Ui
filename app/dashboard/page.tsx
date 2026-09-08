@@ -54,6 +54,14 @@ const ROLE_LABELS: Record<string, string> = {
   user: 'My workspace',
 };
 
+const projectDateFormatter = new Intl.DateTimeFormat('en', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
+const monthFormatter = new Intl.DateTimeFormat('en', { month: 'short' });
+const numberFormatter = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
+
 function parseProjectDate(value?: string) {
   if (!value) return null;
   const parsed = new Date(value.length === 10 ? `${value}T00:00:00` : value);
@@ -89,13 +97,11 @@ function getProgress(entry: ProjectEntry, status: ProjectStatus) {
 
 function formatProjectDate(value?: string) {
   const date = parseProjectDate(value);
-  return date
-    ? new Intl.DateTimeFormat('en', { day: '2-digit', month: 'short', year: 'numeric' }).format(date)
-    : 'No date';
+  return date ? projectDateFormatter.format(date) : 'No date';
 }
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(value);
+  return numberFormatter.format(value);
 }
 
 export default function DashboardHome() {
@@ -162,20 +168,21 @@ export default function DashboardHome() {
     }, { Planned: 0, 'In progress': 0, 'In review': 0, Completed: 0 });
 
     const now = new Date();
-    const months = Array.from({ length: 6 }, (_, index) => {
+    const monthBuckets = Array.from({ length: 6 }, (_, index) => {
       const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
-      const count = entries.filter((entry) => {
-        const projectDate = parseProjectDate(entry.date);
-        return projectDate
-          && projectDate.getFullYear() === date.getFullYear()
-          && projectDate.getMonth() === date.getMonth();
-      }).length;
       return {
         key: `${date.getFullYear()}-${date.getMonth()}`,
-        label: new Intl.DateTimeFormat('en', { month: 'short' }).format(date),
-        value: count,
+        label: monthFormatter.format(date),
+        value: 0,
       };
     });
+    const monthIndex = new Map(monthBuckets.map((month, index) => [month.key, index]));
+    for (const entry of entries) {
+      const projectDate = parseProjectDate(entry.date);
+      if (!projectDate) continue;
+      const index = monthIndex.get(`${projectDate.getFullYear()}-${projectDate.getMonth()}`);
+      if (index !== undefined) monthBuckets[index].value += 1;
+    }
 
     const teamMap = new Map<string, number>();
     for (const entry of entries) {
@@ -189,7 +196,7 @@ export default function DashboardHome() {
     return {
       sorted,
       statuses,
-      months,
+      months: monthBuckets,
       teams,
       totalOutput: entries.reduce((sum, entry) => sum + (Number(entry.finalTotal) || 0), 0),
       completed: statuses.Completed,

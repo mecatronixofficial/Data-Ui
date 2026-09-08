@@ -78,6 +78,8 @@ export default function ReportsView({
   const [editingLoadingId, setEditingLoadingId] = useState<string | null>(null);
   const editingChangedBoxes = useRef<Map<string, Set<number>>>(new Map());
   const editingDateChanged = useRef(false);
+  const latestLoad = useRef(0);
+  const refreshInFlight = useRef(false);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Entry | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -111,6 +113,9 @@ export default function ReportsView({
   const pageEyebrow = scope === 'team' ? 'Your team' : 'Super Admin';
 
   async function load(silent = false) {
+    if (silent && refreshInFlight.current) return;
+    const requestId = ++latestLoad.current;
+    refreshInFlight.current = true;
     if (!silent) setLoading(true);
     try {
       const data = await api.allEntries({
@@ -120,6 +125,9 @@ export default function ReportsView({
         scope,
         teamName: teamFilter || undefined,
       });
+      // A filter submission can overtake an older background refresh. Only the
+      // newest request is allowed to update the report currently on screen.
+      if (requestId !== latestLoad.current) return;
       setEntries(data);
       const seen = new Map<string, { order: number; boxNames: string[] }>();
       for (const entry of data) {
@@ -130,8 +138,14 @@ export default function ReportsView({
       }
       setFields(Array.from(seen.entries()).map(([n, { order, boxNames }]) => ({ name: n, order, boxNames })));
     } catch (err: any) {
+      if (requestId !== latestLoad.current) return;
       toast.error(err.message || 'Could not load reports');
-    } finally { setLoading(false); }
+    } finally {
+      if (requestId === latestLoad.current) {
+        refreshInFlight.current = false;
+        setLoading(false);
+      }
+    }
   }
 
   const reportFields = useMemo<FieldMeta[]>(() => {
@@ -236,7 +250,7 @@ export default function ReportsView({
     const liveRefresh = scope === 'team'
       ? window.setInterval(() => {
           if (document.visibilityState === 'visible') load(true);
-        }, 5000)
+        }, 15000)
       : null;
     window.addEventListener('focus', refreshOnFocus);
     document.addEventListener('visibilitychange', refreshOnFocus);
